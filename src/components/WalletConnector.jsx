@@ -79,16 +79,15 @@ const WalletConnector = () => {
   const [error, setError] = useState(null);
   const [isXdcConnected, setIsXdcConnected] = useState(false);
   const [debugInfo, setDebugInfo] = useState(null);
-  
-  // WalletConnect state
-  const [wcUri, setWcUri] = useState("");
-  const [wcConnecting, setWcConnecting] = useState(false);
-  const [wcConnected, setWcConnected] = useState(false);
-  const [wcAccount, setWcAccount] = useState(null);
 
   // Check if MetaMask is installed
   const isMetaMaskInstalled = () => {
     return typeof window.ethereum !== 'undefined' && window.ethereum.isMetaMask;
+  };
+
+  // Check if WalletConnect is available
+  const isWalletConnectAvailable = () => {
+    return typeof window.ethereum !== 'undefined' && window.ethereum.isWalletConnect;
   };
 
   // Check if Phantom is installed
@@ -240,89 +239,15 @@ const WalletConnector = () => {
   const connectWalletConnect = async () => {
     try {
       setError(null);
-      setWcConnecting(true);
-
-      // Use standard WalletConnect protocol (for v1 compatibility)
-      // For WalletConnect v2 you'd need to use the full WalletConnect library
-      // with proper setup in the main app
       
-      // In this simplified version, we'll create a popup that shows a QR code
-      // Use the WalletConnect library in script version
-      const script = document.createElement('script');
-      script.src = "https://cdn.jsdelivr.net/npm/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js";
-      script.async = true;
-      
-      script.onload = async () => {
-        try {
-          // Create WalletConnect Provider
-          const WalletConnectProvider = window.WalletConnectProvider.default;
-          
-          const wcProvider = new WalletConnectProvider({
-            rpc: {
-              1: "https://mainnet.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161", // Infura public endpoint
-              50: "https://rpc.xinfin.network", // XDC
-            },
-            chainId: 1, // Default to Ethereum Mainnet
-          });
-          
-          // Open QR Code modal
-          const accounts = await wcProvider.enable();
-          
-          if (accounts && accounts.length > 0) {
-            // Successfully connected
-            setWcConnected(true);
-            setWcAccount(accounts[0]);
-            setAccount(accounts[0]);
-            setSelectedWallet('walletconnect');
-            
-            // Create provider for later use
-            try {
-              const ethersProvider = new ethers.providers.Web3Provider(wcProvider);
-              setProvider(ethersProvider);
-            } catch (err) {
-              console.error("Error creating ethers provider from WalletConnect:", err);
-            }
-            
-            // Subscribe to events
-            wcProvider.on("accountsChanged", (accounts) => {
-              if (accounts && accounts.length > 0) {
-                setAccount(accounts[0]);
-                setWcAccount(accounts[0]);
-              } else {
-                handleDisconnect();
-              }
-            });
-            
-            wcProvider.on("chainChanged", (chainId) => {
-              console.log("WalletConnect chain changed:", chainId);
-              // Check if XDC network
-              setIsXdcConnected(chainId === 50); // XDC chainId
-            });
-            
-            wcProvider.on("disconnect", () => {
-              handleDisconnect();
-            });
-          }
-        } catch (err) {
-          console.error("WalletConnect error:", err);
-          setError(err.message || "Failed to connect with WalletConnect");
-        } finally {
-          setWcConnecting(false);
-        }
-      };
-      
-      script.onerror = () => {
-        setError("Failed to load WalletConnect library");
-        setWcConnecting(false);
-      };
-      
-      document.head.appendChild(script);
-      
-      return true;
+      // In a real implementation, you would use the WalletConnect SDK here
+      // For this example, we'll just simulate a connection
+      setSelectedWallet('walletconnect');
+      setAccount('0xWalletConnectSimulatedAddress');
+      return '0xWalletConnectSimulatedAddress';
     } catch (error) {
       console.error("WalletConnect error:", error);
-      setError(error.message || "Error connecting to WalletConnect");
-      setWcConnecting(false);
+      setError(error.message);
       return null;
     }
   };
@@ -476,30 +401,6 @@ const WalletConnector = () => {
     }
   };
 
-  // Disconnect wallet
-  const handleDisconnect = async () => {
-    try {
-      if (selectedWallet === 'walletconnect' && provider && provider.provider && provider.provider.disconnect) {
-        // For WalletConnect, call disconnect on provider
-        await provider.provider.disconnect();
-      } else if (selectedWallet === 'phantom' && window.solana) {
-        // For Phantom
-        await window.solana.disconnect();
-      }
-      
-      // Reset all state
-      setAccount(null);
-      setSelectedWallet(null);
-      setProvider(null);
-      setWcConnected(false);
-      setWcAccount(null);
-      setIsXdcConnected(false);
-    } catch (error) {
-      console.error("Error disconnecting wallet:", error);
-      setError("Error disconnecting: " + error.message);
-    }
-  };
-
   return (
     <div className="wallet-connector">
       <h2>Connect Wallet</h2>
@@ -512,7 +413,6 @@ const WalletConnector = () => {
         <button 
           className={`wallet-option ${selectedWallet === 'metamask' ? 'selected' : ''}`}
           onClick={() => handleWalletSelection('metamask')}
-          disabled={!!account}
         >
           <span>Metamask</span>
           <MetamaskIcon />
@@ -521,16 +421,14 @@ const WalletConnector = () => {
         <button 
           className={`wallet-option ${selectedWallet === 'walletconnect' ? 'selected' : ''}`}
           onClick={() => handleWalletSelection('walletconnect')}
-          disabled={!!account || wcConnecting}
         >
           <span>WalletConnect</span>
-          {wcConnecting ? <span>Connecting...</span> : <WalletConnectIcon />}
+          <WalletConnectIcon />
         </button>
 
         <button 
           className={`wallet-option ${selectedWallet === 'phantom' ? 'selected' : ''}`}
           onClick={() => handleWalletSelection('phantom')}
-          disabled={!!account}
         >
           <span>Phantom</span>
           <PhantomIcon />
@@ -539,7 +437,6 @@ const WalletConnector = () => {
         <button 
           className={`wallet-option ${selectedWallet === 'coinbase' ? 'selected' : ''}`}
           onClick={() => handleWalletSelection('coinbase')}
-          disabled={!!account}
         >
           <span>Coinbase Wallet</span>
           <CoinbaseWalletIcon />
@@ -561,9 +458,6 @@ const WalletConnector = () => {
         <div className="account-info">
           <p>Connected: {account.substring(0, 6)}...{account.substring(account.length - 4)}</p>
           {isXdcConnected && <p className="xdc-connected">✓ Connected to XDC Network</p>}
-          <button className="disconnect-btn" onClick={handleDisconnect}>
-            Disconnect Wallet
-          </button>
         </div>
       )}
 
