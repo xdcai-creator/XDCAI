@@ -2,6 +2,27 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import './WalletConnector.css';
+const [session, setSession] = useState({})
+const { request, data, error, loading } = useRequest()
+const [disabled, setDisabled] = useState(false)
+import {
+  WalletConnectModalSign,
+  useConnect,
+  useRequest
+ } from '@walletconnect/modal-sign-react'
+  const projectId = '1a4ff99bcd6e78be055075d2c24026b9'
+
+  const { connect } = useConnect({
+    requiredNamespaces: {
+    eip155: {
+    methods: ['eth_sendTransaction', 'personal_sign'],
+    chains: ['eip155:1'],
+    events: ['chainChanged', 'accountsChanged']
+    }
+    }
+    })
+
+   
 
 // SVG Icons for wallets
 const MetamaskIcon = () => (
@@ -79,6 +100,7 @@ const WalletConnector = () => {
   const [error, setError] = useState(null);
   const [isXdcConnected, setIsXdcConnected] = useState(false);
   const [debugInfo, setDebugInfo] = useState(null);
+  
 
   // Check if MetaMask is installed
   const isMetaMaskInstalled = () => {
@@ -235,22 +257,29 @@ const WalletConnector = () => {
     }
   };
 
+  
   // Connect to WalletConnect
-  const connectWalletConnect = async () => {
+  const connectWalletConnect = async ()=> {
     try {
-      setError(null);
-      
-      // In a real implementation, you would use the WalletConnect SDK here
-      // For this example, we'll just simulate a connection
-      setSelectedWallet('walletconnect');
-      setAccount('0xWalletConnectSimulatedAddress');
-      return '0xWalletConnectSimulatedAddress';
-    } catch (error) {
-      console.error("WalletConnect error:", error);
-      setError(error.message);
-      return null;
+      setDisabled(true)
+      const session = await connect()
+      console.info(session)
+      setSession(session)
+      } catch (err) {
+      console.error(err)
+      } finally {
+      setDisabled(false)
+      }
     }
-  };
+    <WalletConnectModalSign
+    projectId={projectId}
+    metadata={{
+      name: 'My Dapp',
+      description: 'My Dapp description',
+      url: 'https://my-dapp.com',
+      icons: ['https://my-dapp.com/logo.png']
+    }}
+  />
 
   // Connect to Phantom
   const connectPhantom = async () => {
