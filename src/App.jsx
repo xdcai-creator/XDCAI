@@ -1,7 +1,7 @@
 // src/App.jsx
 import React, { useState } from "react";
 import WalletConnector from "./components/WalletConnector";
-import CoinbaseTest from "./components/CoinbaseTest";
+
 import "./App.css";
 
 function App() {
@@ -11,7 +11,7 @@ function App() {
     <div className="app">
       {showTest ? (
         <div>
-          <CoinbaseTest />
+       
           <button 
             onClick={() => setShowTest(false)}
             style={{
@@ -30,20 +30,7 @@ function App() {
       ) : (
         <div>
           <WalletConnector />
-          <button 
-            onClick={() => setShowTest(true)}
-            style={{
-              marginTop: '20px',
-              padding: '10px 15px',
-              backgroundColor: '#10B981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer'
-            }}
-          >
-            Test Coinbase Only
-          </button>
+         
         </div>
       )}
     </div>
