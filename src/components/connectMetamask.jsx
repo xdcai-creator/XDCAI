@@ -1,3 +1,5 @@
+import { ethers } from 'ethers';
+
 export  const connectMetaMask = async ({ 
   setError, 
   setAccount,

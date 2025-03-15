@@ -1,6 +1,6 @@
 // src/App.jsx
 import React, { useState } from "react";
-import WalletConnector from "./components/WalletConnector";
+import XDCAIPurchaseFlow from "./components/XDCAIPurchaseFlow";
 
 import "./App.css";
 
@@ -29,7 +29,7 @@ function App() {
         </div>
       ) : (
         <div>
-          <WalletConnector />
+          <XDCAIPurchaseFlow />
          
         </div>
       )}

@@ -1,0 +1,540 @@
+/* XDCAIPurchaseFlow.css */
+.xdcai-purchase-flow {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #0c0c0c;
+  color: white;
+  border-radius: 12px;
+  font-family: sans-serif;
+}
+
+/* Initial Screen Styles */
+.xdcai-purchase-container {
+  text-align: center;
+}
+
+.xdcai-purchase-container h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.xdcai-purchase-container h2 {
+  font-size: 18px;
+  margin: 15px 0;
+}
+
+.cant-find-tokens {
+  color: #999;
+  text-align: right;
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.presale-cta {
+  font-size: 28px;
+  font-weight: bold;
+  color: #90EE90;
+  margin: 30px 0;
+}
+
+.button-container {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px 0;
+}
+
+.btn-primary {
+  background-color: #90EE90;
+  color: #000;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  background-color: #18191a;
+  color: white;
+  border: 1px solid #303030;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.help-links {
+  margin-top: 20px;
+}
+
+.help-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 10px 0;
+  cursor: pointer;
+  color: #b0b0b0;
+}
+
+.help-icon {
+  margin-right: 8px;
+}
+
+/* Wallet Connector Styles (integrated from provided CSS) */
+.wallet-connector {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #0c0c0c;
+  color: white;
+  border-radius: 12px;
+  font-family: sans-serif;
+}
+
+.wallet-connector h2 {
+  font-size: 24px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.wallet-text {
+  text-align: center;
+  margin-bottom: 10px;
+  color: #b0b0b0;
+  font-size: 14px;
+}
+
+.metamask-link {
+  color: #1da1f2;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.wallet-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.wallet-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: #18191a;
+  border: 1px solid #303030;
+  border-radius: 10px;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.wallet-option:hover {
+  background-color: #242526;
+  border-color: #505050;
+}
+
+.wallet-option.selected {
+  border-color: #1da1f2;
+  background-color: rgba(29, 161, 242, 0.1);
+}
+
+.error-message {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: rgba(255, 76, 76, 0.1);
+  color: #ff4c4c;
+  border-radius: 5px;
+  text-align: center;
+}
+
+.coinbase-status {
+  margin-top: 15px;
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+}
+
+.debug-info {
+  margin-top: 20px;
+  font-size: 12px;
+  color: #888;
+}
+
+.debug-info summary {
+  cursor: pointer;
+  padding: 5px;
+  background-color: #222;
+  border-radius: 4px;
+}
+
+.debug-info pre {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #2d2d2d;
+  border-radius: 5px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+/* Currency Selection Screen */
+.currency-selection {
+  padding: 10px 0;
+}
+
+.currency-tabs {
+  display: flex;
+  justify-content: space-between;
+  margin: 15px 0;
+}
+
+.currency-tab {
+  flex: 1;
+  padding: 10px 15px;
+  background-color: #18191a;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  margin: 0 5px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.currency-tab.active {
+  background-color: #90EE90;
+  color: black;
+  border-color: #90EE90;
+}
+
+.currency-list {
+  margin-top: 15px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.currency-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background-color: #18191a;
+  border: 1px solid #303030;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.currency-item:hover {
+  background-color: #242526;
+}
+
+.currency-icon-wrapper {
+  margin-right: 15px;
+}
+
+.eth-icon, .bnb-icon, .sol-icon, .usdt-icon, .usdc-icon, .usdt-bnb-icon, .usdc-bnb-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.eth-icon {
+  background-color: #627EEA;
+}
+
+.bnb-icon {
+  background-color: #F0B90B;
+}
+
+.sol-icon {
+  background-color: #9945FF;
+}
+
+.usdt-icon {
+  background-color: #26A17B;
+}
+
+.usdc-icon {
+  background-color: #2775CA;
+}
+
+.usdt-bnb-icon {
+  background-color: #26A17B;
+  border: 2px solid #F0B90B;
+}
+
+.usdc-bnb-icon {
+  background-color: #2775CA;
+  border: 2px solid #F0B90B;
+}
+
+.eth-icon-small, .bsc-icon-small, .sol-icon-small {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+.eth-icon-small {
+  background-color: #627EEA;
+}
+
+.bsc-icon-small {
+  background-color: #F0B90B;
+}
+
+.sol-icon-small {
+  background-color: #9945FF;
+}
+
+.currency-info {
+  flex-grow: 1;
+  text-align: left;
+}
+
+.currency-name {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.currency-symbol {
+  font-size: 14px;
+  color: #aaa;
+  margin-top: 4px;
+}
+
+.currency-balance {
+  text-align: right;
+}
+
+.currency-value {
+  font-size: 14px;
+  color: #aaa;
+}
+
+.currency-amount {
+  font-size: 16px;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* Purchase Screen */
+.purchase-screen {
+  text-align: center;
+}
+
+.presale-header {
+  margin-bottom: 20px;
+}
+
+.presale-header h2 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 10px 0;
+  line-height: 1.4;
+}
+
+.payment-container {
+  width: 100%;
+  margin-top: 20px;
+  padding: 10px 0;
+  border-radius: 10px;
+}
+
+.payment-row {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.payment-label {
+  font-size: 14px;
+  color: #aaa;
+  margin-bottom: 8px;
+}
+
+.payment-input-container {
+  display: flex;
+  background-color: #111;
+  border: 1px solid #333;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.payment-input {
+  flex-grow: 1;
+  background: transparent;
+  border: none;
+  padding: 15px;
+  color: white;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.currency-dropdown {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  background-color: #222;
+  border: none;
+  border-radius: 0 8px 8px 0;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  margin-left: 5px;
+}
+
+.price-rate {
+  text-align: right;
+  font-size: 14px;
+  color: #aaa;
+  margin-top: 8px;
+}
+
+.error-message {
+  margin: 15px 0;
+  padding: 10px;
+  text-align: center;
+  color: #ff6b6b;
+  font-size: 14px;
+}
+
+.buy-button {
+  width: 100%;
+  padding: 16px;
+  background-color: #90EE90;
+  color: black;
+  border: none;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  margin-top: 15px;
+  cursor: pointer;
+}
+
+/* Thank You Screen */
+.thank-you-screen {
+  text-align: center;
+  padding: 10px;
+}
+
+.thank-you-screen h2 {
+  font-size: 22px;
+  margin-bottom: 15px;
+}
+
+.steps-container {
+  margin: 25px 0;
+}
+
+.step {
+  margin-bottom: 20px;
+}
+
+.step-number {
+  color: #90EE90;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.step-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 15px;
+  background-color: #18191a;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.xdc-icon {
+  color: #1da1f2;
+  font-weight: bold;
+}
+
+.claim-button {
+  width: 100%;
+  padding: 15px;
+  background-color: #90EE90;
+  color: black;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 15px;
+}
+
+.claim-button:disabled {
+  background-color: #4a7a4a;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Claim Screen */
+.claim-screen {
+  text-align: center;
+  padding: 10px;
+}
+
+.claim-screen h2 {
+  font-size: 22px;
+  margin-bottom: 15px;
+}
+
+.xdc-connect-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 15px;
+  background-color: #18191a;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  color: white;
+  font-size: 16px;
+  margin: 20px 0;
+  cursor: pointer;
+}
+
+.xdc-connect-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Account Info */
+.account-info {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: rgba(76, 217, 100, 0.1);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.xdc-connected {
+  color: #4cd964;
+  font-weight: 600;
+  margin-top: 5px;
+}
