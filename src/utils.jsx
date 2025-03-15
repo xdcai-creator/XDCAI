@@ -1,8 +1,4 @@
-import { connectMetaMask } from './components/connectMetamask';
-import { connectWalletConnect } from './components/connectWalletConnect';
-import { connectPhantom } from './components/connectPhantom';
-import { connectCoinbaseWallet } from './components/connectCoinbase';
-import { testCoinbaseProvider } from './components/testCoinbaseProvider';
+
 
 // Connect to XDC Network
 export const connectToXdcNetwork = async ({ provider, setIsXdcConnected, setError, XDC_NETWORK }) => {
