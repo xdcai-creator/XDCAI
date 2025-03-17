@@ -101,6 +101,7 @@ const XDCAIPurchaseFlow = () => {
             setEthAmount={setEthAmount}
             xdcaiAmount={xdcaiAmount}
             setXdcaiAmount={setXdcaiAmount}
+            setCurrentScreen={setCurrentScreen}
           />
         );
       case 3:
