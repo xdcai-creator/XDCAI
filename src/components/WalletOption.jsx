@@ -122,7 +122,7 @@ export function WalletOption({
         transition: 'background-color 0.2s, border-color 0.2s',
         opacity: (!ready || isPending) ? 0.6 : 1,
         width: '100%',
-        marginBottom: '15px'
+        marginBottom: '10px'
       }}
       disabled={!ready || isPending}
       onClick={onClick}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useAccount, useDisconnect, useEnsName, useSendTransaction, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi';
-import { parseEther } from 'viem';
+import { useAccount, useDisconnect, useEnsName, useSendTransaction, useWaitForTransactionReceipt, useSwitchChain, useNetwork } from 'wagmi';
+import { parseEther, formatEther } from 'viem';
 import { mainnet, base, bsc, optimism } from 'wagmi/chains';
 
 export const PurchaseScreen = ({
@@ -16,9 +16,11 @@ export const PurchaseScreen = ({
   setCurrentScreen
 }) => {
   // Account related hooks
-  const { address, isConnected, chainId: currentChainId } = useAccount();
+  const { address, isConnected, chain } = useAccount();
   const { disconnect } = useDisconnect();
   const { data: ensName } = useEnsName({ address });
+  const { chain: currentChain } = useNetwork();
+  const currentChainId = currentChain?.id;
   
   // Network switching hook
   const { switchChain, isPending: isSwitchingChain, error: switchChainError } = useSwitchChain();
@@ -27,18 +29,18 @@ export const PurchaseScreen = ({
   const { 
     data: hash,
     error: txError, 
-    isPending: isSendingTx, 
+    isPending: isSendingTx,
     sendTransaction 
   } = useSendTransaction();
   
-  // Combined pending state
-  const isPending = isSendingTx || isSwitchingChain;
-  
+  // Wait for transaction receipt
   const { 
     isLoading: isConfirming, 
-    isSuccess: isConfirmed 
+    isSuccess: isConfirmed,
+    data: receipt
   } = useWaitForTransactionReceipt({ 
-    hash, 
+    hash,
+    timeout: 60_000 // 60 seconds timeout
   });
 
   // Local state for transaction status
@@ -224,6 +226,7 @@ export const PurchaseScreen = ({
     try {
       // Reset any previous errors
       setError(null);
+      setIsProcessing(true);
       
       // Basic input validation
       if (!ethAmount || parseFloat(ethAmount) <= 0) {
@@ -240,23 +243,78 @@ export const PurchaseScreen = ({
         setError('No connected wallet account found');
         return;
       }
+
+      // Get required network for selected currency
+      const requiredNetwork = coinNetworks[selectedCurrency];
       
-      // For native token transactions (ETH, BNB, etc.)
-      if (selectedCurrency === 'ETH' || selectedCurrency === 'BNB' || selectedCurrency === 'SOL') {
-        setIsProcessing(true);
-        sendTransaction({ 
-          to: PRESALE_CONTRACT_ADDRESS, 
-          value: parseEther(ethAmount) 
-        });
+      // Check if we need to switch networks
+      if (requiredNetwork?.chainId && requiredNetwork.chainId !== currentChainId) {
+        try {
+          await switchChain({ chainId: requiredNetwork.chainId });
+        } catch (switchError) {
+          setError(`Failed to switch to ${requiredNetwork.name} network: ${switchError.message}`);
+          return;
+        }
+      }
+
+      // For native token transactions (ETH, BNB)
+      if (selectedCurrency === 'ETH' || selectedCurrency === 'BNB') {
+        // Get contract address for current network
+        const contractAddress = presaleContractAddresses[currentChainId];
+        if (!contractAddress) {
+          setError(`No contract address found for network ${currentChainId}`);
+          return;
+        }
+
+        try {
+          // First request account access
+          if (window.ethereum) {
+            await window.ethereum.request({ 
+              method: 'eth_requestAccounts' 
+            });
+
+            // Prepare transaction parameters
+            const transactionParameters = {
+              to: contractAddress,
+              from: address,
+              value: parseEther(ethAmount).toString(16), // Convert to hex
+              chainId: currentChainId
+            };
+
+            // Send transaction
+            const txHash = await window.ethereum.request({
+              method: 'eth_sendTransaction',
+              params: [transactionParameters],
+            });
+
+            // Wait for transaction confirmation
+            const receipt = await waitForTransactionReceipt({ hash: txHash });
+            
+            if (receipt.status === 1) { // 1 = success
+              setCurrentScreen(3); // Move to thank you screen
+            } else {
+              setError('Transaction failed. Please try again.');
+            }
+          } else {
+            setError('MetaMask not found. Please install MetaMask and try again.');
+          }
+        } catch (txError) {
+          if (txError.code === 4001) {
+            setError('Transaction rejected by user');
+          } else {
+            setError(`Transaction failed: ${txError.message}`);
+          }
+        }
+      } else if (selectedCurrency === 'SOL') {
+        setError('Solana transactions are not supported in this version');
       } else {
         // For ERC20 tokens like USDT, USDC
-        // This would require a different approach with contract interaction
-        // For this demo, we'll show a message
         setError("Token payments will be implemented in the next version");
       }
     } catch (error) {
       console.error("Purchase error:", error);
       setError(`Purchase failed: ${error.message}`);
+    } finally {
       setIsProcessing(false);
     }
   };
@@ -287,6 +345,27 @@ export const PurchaseScreen = ({
   const hasEnoughBalance = () => {
     const coin = coinData.find(c => c.symbol === selectedCurrency);
     return coin && parseFloat(ethAmount) <= coin.balance;
+  };
+
+  // Add error handling and retry logic for MetaMask connector
+  const handleConnectWallet = async (connector) => {
+    setSelectedWallet(connector.id);
+    setPendingConnector(connector.id);
+    try {
+      await connect({ connector });
+    } catch (error) {
+      console.error('Wallet connection error:', error);
+      // Add user-friendly error message
+      if (error.message?.includes('metamask')) {
+        // Check if MetaMask is installed
+        if (!window.ethereum) {
+          alert('Please install MetaMask to continue');
+          window.open('https://metamask.io/download.html', '_blank');
+        } else {
+          alert('Please unlock your MetaMask wallet and try again');
+        }
+      }
+    }
   };
 
   return (

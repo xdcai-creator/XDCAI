@@ -2,10 +2,11 @@ import React, { useEffect } from 'react';
 import { useConnect } from 'wagmi';
 import { WalletOption } from './WalletOption';
 
-export function WalletOptions({ setSelectedWallet }) {
+export function WalletOptions({ setSelectedWallet, onError }) {
   const { connectors, connect, isPending, error } = useConnect();
   const [pendingConnector, setPendingConnector] = React.useState(null);
   const [availableConnectors, setAvailableConnectors] = React.useState([]);
+  const [connectionAttempts, setConnectionAttempts] = React.useState(0);
 
   // Define our specific wallets we want to show
   const desiredWallets = [
@@ -64,18 +65,74 @@ export function WalletOptions({ setSelectedWallet }) {
     setAvailableConnectors(manuallyOrderedConnectors);
   }, [connectors]);
 
+  // Handle connection error
+  useEffect(() => {
+    if (error) {
+      console.error('Wallet connection error:', error);
+      onError(error.message);
+      
+      // Reset pending state
+      setPendingConnector(null);
+      
+      // Increment connection attempts
+      setConnectionAttempts(prev => prev + 1);
+    }
+  }, [error, onError]);
+
+  // Connection timeout handler
+  const connectWithTimeout = async (connector) => {
+    try {
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Connection timeout')), 30000);
+      });
+
+      const connectionPromise = connect({ connector });
+      await Promise.race([connectionPromise, timeoutPromise]);
+      
+      // Reset connection attempts on successful connection
+      setConnectionAttempts(0);
+      
+    } catch (error) {
+      console.error('Connection attempt failed:', error);
+      onError(error.message);
+      
+      if (connectionAttempts < 3) {
+        // Retry connection
+        console.log('Retrying connection...');
+        setTimeout(() => handleConnectWallet(connector), 1000);
+      } else {
+        onError('Failed to connect after multiple attempts. Please try again later.');
+        setConnectionAttempts(0);
+      }
+    }
+  };
+
   // Handle wallet connection
-  const handleConnectWallet = (connector) => {
-    setSelectedWallet(connector.id);
-    setPendingConnector(connector.id);
-    connect({ connector });
+  const handleConnectWallet = async (connector) => {
+    try {
+      setSelectedWallet(connector.id);
+      setPendingConnector(connector.id);
+      
+      // Check if MetaMask is installed for MetaMask connector
+      if (connector.id === 'metaMask' && typeof window.ethereum === 'undefined') {
+        throw new Error('Please install MetaMask to continue');
+      }
+      
+      // Attempt connection with timeout
+      await connectWithTimeout(connector);
+      
+    } catch (error) {
+      console.error('Wallet connection error:', error);
+      onError(error.message);
+      setPendingConnector(null);
+    }
   };
 
   return (
     <div style={{
       maxWidth: '600px',
       margin: '0 auto',
-      padding: '30px 20px',
+      padding: '0px 20px',
       backgroundColor: '#0c0c0c',
       color: 'white',
       borderRadius: '12px',
