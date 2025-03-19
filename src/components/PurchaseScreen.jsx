@@ -1,6 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useAccount, useDisconnect, useEnsName, useSendTransaction, useWaitForTransactionReceipt, useSwitchChain } from 'wagmi';
-import { parseEther } from 'viem';
+import { 
+  useAccount,
+  useDisconnect,
+  useEnsName,
+  useSendTransaction,
+  useWaitForTransactionReceipt,
+  useSwitchChain,
+} from 'wagmi'
+import { useWriteContract } from 'wagmi'
+import { parseEther, parseUnits } from 'viem';
 import { mainnet, base, bsc, optimism } from 'wagmi/chains';
 
 export const PurchaseScreen = ({
@@ -31,8 +39,8 @@ export const PurchaseScreen = ({
     sendTransaction 
   } = useSendTransaction();
   
-  // Combined pending state
-  const isPending = isSendingTx || isSwitchingChain;
+  // Combined pending state for all async operations
+  const isPending = isSendingTx || isSwitchingChain ;
   
   const { 
     isLoading: isConfirming, 
@@ -53,8 +61,12 @@ export const PurchaseScreen = ({
 
   const displayAddress = ensName || formatAddress(address);
 
-  // Presale contract address - Replace with your actual contract address
-  const PRESALE_CONTRACT_ADDRESS = "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+  // Presale contract addresses on different chains - with checksummed addresses
+  const presaleContractAddresses = {
+    [mainnet.id]: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", // ETH mainnet address
+    [bsc.id]: "0x9a67f1940164d0318612b497e8e6038f902a00a4", // BSC address - checksummed
+    [optimism.id]: "0x45C27821303a643F1Fc7F2EB3Cd4835A5Cd4909c", // Optimism address
+  };
 
   // Coin network associations with chain IDs
   const coinNetworks = {
@@ -68,14 +80,6 @@ export const PurchaseScreen = ({
     'USDT-SOL': { name: 'SOL', chainId: null },
     'USDC-SOL': { name: 'SOL', chainId: null },
   };
-  
-  // Presale contract addresses on different chains
-  const presaleContractAddresses = {
-    [mainnet.id]: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", // ETH mainnet address
-    [bsc.id]: "0x9A67F1940164d0318612b497E8e6038f902a00a4", // BSC address
-    [optimism.id]: "0x45C27821303a643F1Fc7F2EB3Cd4835A5Cd4909c", // Optimism address
-    // Add other chain contract addresses as needed
-  };
 
   // Original coin data with added network property
   const coinData = [
@@ -86,6 +90,8 @@ export const PurchaseScreen = ({
     { symbol: 'USDC', name: 'USD Coin', balance: 0, value: 0, network: 'ETH' },
     { symbol: 'USDT-BNB', name: 'USDT', balance: 0, value: 0, network: 'BSC' },
     { symbol: 'USDC-BNB', name: 'USD Coin', balance: 0, value: 0, network: 'BSC' },
+    { symbol: 'USDT-SOL', name: 'USDT', balance: 0, value: 0, network: 'SOL' },
+    { symbol: 'USDC-SOL', name: 'USD Coin', balance: 0, value: 0, network: 'SOL' },
   ];
 
   const [activeTab, setActiveTab] = useState('ALL');
@@ -119,26 +125,42 @@ export const PurchaseScreen = ({
   
   // Handle currency selection and network switching
   const handleNetworkCurrencySelect = async (currency) => {
-    // First update the selected currency in the UI
-    handleCurrencySelect(currency);
-    
-    // Get the required chain for this currency
-    const requiredNetwork = coinNetworks[currency];
-    
-    // If this currency requires a chain switch and isn't SOL (which isn't EVM compatible)
-    if (requiredNetwork.chainId && requiredNetwork.chainId !== currentChainId) {
-      try {
+    try {
+      // First update the selected currency in the UI
+      handleCurrencySelect(currency);
+      
+      // Get the required chain for this currency
+      const requiredNetwork = coinNetworks[currency];
+      
+      // If this currency requires a chain switch and isn't SOL
+      if (requiredNetwork.chainId && requiredNetwork.chainId !== currentChainId) {
         setError(null);
-        await switchChain({ chainId: requiredNetwork.chainId });
-      } catch (error) {
-        console.error("Failed to switch chains:", error);
-        setError(`Failed to switch to ${requiredNetwork.name} network. ${error.message}`);
+        setIsProcessing(true);
+        
+        try {
+          // Switch chain and wait for completion
+          await switchChain({ chainId: requiredNetwork.chainId });
+          
+          // Wait for a short period to ensure wallet state is updated
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Reload the page to ensure all states are fresh
+          window.location.reload();
+        } catch (error) {
+          console.error("Failed to switch chains:", error);
+          setError(`Failed to switch to ${requiredNetwork.name} network. ${error.message}`);
+          setIsProcessing(false);
+        }
       }
-    }
-    
-    // For SOL and other non-EVM chains, we would need to handle differently
-    if (currency === 'SOL' || currency === 'USDT-SOL' || currency === 'USDC-SOL') {
-      setError("Solana payments are coming soon. Please select an EVM compatible currency.");
+      
+      // For SOL and other non-EVM chains
+      if (currency === 'SOL' || currency === 'USDT-SOL' || currency === 'USDC-SOL') {
+        setError("Solana payments are coming soon. Please select an EVM compatible currency.");
+      }
+    } catch (error) {
+      console.error("Currency selection error:", error);
+      setError(error.message);
+      setIsProcessing(false);
     }
   };
 
@@ -219,10 +241,34 @@ export const PurchaseScreen = ({
     }
   };
   
-  // Enhanced purchase handler using wagmi hooks
+  // Add the ERC20 ABI
+  const erc20ABI = [
+    {
+      name: 'transfer',
+      type: 'function',
+      inputs: [
+        { name: 'recipient', type: 'address' },
+        { name: 'amount', type: 'uint256' },
+      ],
+      outputs: [{ name: '', type: 'bool' }],
+      stateMutability: 'nonpayable',
+    },
+  ];
+
+  // Add token addresses mapping
+  const tokenAddresses = {
+    USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // Ethereum mainnet
+    'USDC-BNB': '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', // BSC
+    USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7', // Ethereum mainnet
+    'USDT-BNB': '0x55d398326f99059fF775485246999027B3197955', // BSC
+  };
+
+  // Replace usePrepareContractWrite and useContractWrite with useWriteContract
+  const { writeContract, data: tokenHash, isLoading: isTokenSending } = useWriteContract();
+
+  // Update the handleEnhancedPurchase function
   const handleEnhancedPurchase = async () => {
     try {
-      // Reset any previous errors
       setError(null);
       
       // Basic input validation
@@ -240,19 +286,49 @@ export const PurchaseScreen = ({
         setError('No connected wallet account found');
         return;
       }
+
+      // Verify we're on the correct network
+      const requiredNetwork = coinNetworks[selectedCurrency];
+      if (requiredNetwork.chainId !== currentChainId) {
+        setError(`Please switch to ${requiredNetwork.name} network to continue`);
+        return;
+      }
+
+      setIsProcessing(true);
       
-      // For native token transactions (ETH, BNB, etc.)
-      if (selectedCurrency === 'ETH' || selectedCurrency === 'BNB' || selectedCurrency === 'SOL') {
-        setIsProcessing(true);
+      // Handle different payment methods
+      if (selectedCurrency === 'ETH' || selectedCurrency === 'BNB') {
+        // Native token transactions
+        const targetAddress = presaleContractAddresses[currentChainId];
+        if (!targetAddress) {
+          throw new Error(`No contract address found for chain ID ${currentChainId}`);
+        }
+        
         sendTransaction({ 
-          to: PRESALE_CONTRACT_ADDRESS, 
-          value: parseEther(ethAmount) 
+          to: targetAddress,
+          value: parseEther(ethAmount),
         });
-      } else {
-        // For ERC20 tokens like USDT, USDC
-        // This would require a different approach with contract interaction
-        // For this demo, we'll show a message
-        setError("Token payments will be implemented in the next version");
+      } else if (selectedCurrency.includes('USDC') || selectedCurrency.includes('USDT')) {
+        // Token transactions using writeContract
+        const tokenAddress = tokenAddresses[selectedCurrency];
+        const targetAddress = presaleContractAddresses[currentChainId];
+        
+        if (!tokenAddress || !targetAddress) {
+          throw new Error('Invalid token or contract address');
+        }
+
+        writeContract({
+          address: tokenAddress,
+          abi: erc20ABI,
+          functionName: 'transfer',
+          args: [
+            targetAddress,
+            parseUnits(ethAmount || '0', 6)
+          ],
+        });
+      } else if (selectedCurrency.includes('SOL')) {
+        setError('Solana payments are not yet supported');
+        setIsProcessing(false);
       }
     } catch (error) {
       console.error("Purchase error:", error);
@@ -260,7 +336,7 @@ export const PurchaseScreen = ({
       setIsProcessing(false);
     }
   };
-  
+
   // Get logo URL for a currency - using more reliable URLs
   const getCurrencyLogo = (symbol) => {
     switch(symbol) {
@@ -309,6 +385,23 @@ export const PurchaseScreen = ({
       }
     }
   };
+
+  // Network change effect with proper cleanup
+  useEffect(() => {
+    const handleChainChanged = () => {
+      window.location.reload();
+    };
+
+    if (typeof window.ethereum !== 'undefined') {
+      window.ethereum.on('chainChanged', handleChainChanged);
+    }
+    
+    return () => {
+      if (typeof window.ethereum !== 'undefined') {
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
+      }
+    };
+  }, []);
 
   return (
     <div className="purchase-screen" style={{ maxWidth: '600px', margin: '0 auto' }}>
