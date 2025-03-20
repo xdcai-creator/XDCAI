@@ -538,3 +538,42 @@
   font-weight: 600;
   margin-top: 5px;
 }
+
+.xdc-network-details {
+  background: #18191a;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.xdc-network-details h3 {
+  margin-top: 0;
+  color: #90EE90;
+  font-size: 1.2em;
+}
+
+.network-info {
+  margin: 15px 0;
+}
+
+.network-info p {
+  margin: 8px 0;
+  font-size: 0.9em;
+  color: #b0b0b0;
+}
+
+.network-info strong {
+  color: #90EE90;
+  margin-right: 8px;
+}
+
+.network-note {
+  font-style: italic;
+  color: #888;
+  font-size: 0.9em;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #303030;
+}
