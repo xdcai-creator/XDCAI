@@ -36,8 +36,7 @@ export const config = createConfig({
   connectors: [
     metaMask(),
     walletConnect({ projectId }),
-    coinbaseWallet({ appName: 'XDCAI Presale' }),
-    injected(),
+    coinbaseWallet({ appName: 'XDCAI Presale' })
   ],
   transports: {
     [mainnet.id]: http(),

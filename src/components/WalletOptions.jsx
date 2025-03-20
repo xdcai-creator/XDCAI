@@ -12,7 +12,6 @@ export function WalletOptions({ setSelectedWallet, onError }) {
   const desiredWallets = [
     { id: 'metaMask', name: 'Metamask' },
     { id: 'walletConnect', name: 'WalletConnect' },
-    { id: 'phantom', name: 'Phantom' },
     { id: 'coinbaseWallet', name: 'Coinbase Wallet' }
   ];
 
@@ -38,26 +37,12 @@ export function WalletOptions({ setSelectedWallet, onError }) {
     );
     if (walletConnectConnector) manuallyOrderedConnectors.push(walletConnectConnector);
     
-    // Then Phantom (often an injected wallet)
-    const phantomConnector = connectors.find(c => 
-      c.id === 'phantom' || 
-      (c.id === 'injected' && !c.name?.toLowerCase().includes('metamask'))
-    );
-    if (phantomConnector) manuallyOrderedConnectors.push(phantomConnector);
-    
     // Then Coinbase Wallet
     const coinbaseConnector = connectors.find(c => 
       c.id === 'coinbaseWallet' || 
       c.name?.toLowerCase().includes('coinbase')
     );
     if (coinbaseConnector) manuallyOrderedConnectors.push(coinbaseConnector);
-    
-    // Also include any injected connectors that might be browser wallets
-    const injectedConnectors = connectors.filter(c => 
-      c.id === 'injected' && 
-      !manuallyOrderedConnectors.includes(c)
-    );
-    manuallyOrderedConnectors.push(...injectedConnectors);
     
     // Log our final list for debugging
     console.log("Manually ordered connectors:", manuallyOrderedConnectors.map(c => ({ id: c.id, name: c.name })));

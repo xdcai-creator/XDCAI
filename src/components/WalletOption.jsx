@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import {
   MetamaskIcon,
   CoinbaseWalletIcon,
-  PhantomIcon,
   WalletConnectIcon
 } from './icons';
 
@@ -24,16 +23,6 @@ const getIconForConnector = (connector) => {
   // Check for WalletConnect
   if (id === 'walletconnect' || name.includes('walletconnect')) {
     return <WalletConnectIcon />;
-  }
-  
-  // Check for Phantom (typically an injected connector)
-  if (id === 'phantom' || (id === 'injected' && !name.includes('metamask'))) {
-    return <PhantomIcon />;
-  }
-  
-  // Default fallback for other injected wallets
-  if (id === 'injected') {
-    return <PhantomIcon />;
   }
   
   // Fallback for anything else
@@ -58,11 +47,6 @@ const getDisplayName = (connector) => {
   // Check for WalletConnect
   if (id === 'walletconnect' || name.includes('walletconnect')) {
     return 'WalletConnect';
-  }
-  
-  // Check for Phantom (often an injected connector)
-  if (id === 'phantom' || (id === 'injected' && !name.includes('metamask'))) {
-    return 'Phantom';
   }
   
   // For other injected connectors
