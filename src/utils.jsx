@@ -1,19 +1,24 @@
-
+//src/utils.jsx
 
 // Connect to XDC Network
-export const connectToXdcNetwork = async ({ provider, setIsXdcConnected, setError, XDC_NETWORK }) => {
+export const connectToXdcNetwork = async ({
+  provider,
+  setIsXdcConnected,
+  setError,
+  XDC_NETWORK,
+}) => {
   try {
     setError(null);
 
     if (!window.ethereum) {
-      setError('Please install MetaMask to connect to XDC Network');
+      setError("Please install MetaMask to connect to XDC Network");
       return false;
     }
 
     try {
       // Try to switch to XDC Network if it's already added
       await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
+        method: "wallet_switchEthereumChain",
         params: [{ chainId: XDC_NETWORK.chainId }],
       });
       setIsXdcConnected(true);
@@ -23,7 +28,7 @@ export const connectToXdcNetwork = async ({ provider, setIsXdcConnected, setErro
       if (switchError.code === 4902) {
         try {
           await window.ethereum.request({
-            method: 'wallet_addEthereumChain',
+            method: "wallet_addEthereumChain",
             params: [
               {
                 chainId: XDC_NETWORK.chainId,
@@ -34,13 +39,13 @@ export const connectToXdcNetwork = async ({ provider, setIsXdcConnected, setErro
               },
             ],
           });
-          
+
           // After adding the network, try to switch to it
           await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
+            method: "wallet_switchEthereumChain",
             params: [{ chainId: XDC_NETWORK.chainId }],
           });
-          
+
           setIsXdcConnected(true);
           return true;
         } catch (addError) {
@@ -62,9 +67,9 @@ export const connectToXdcNetwork = async ({ provider, setIsXdcConnected, setErro
 };
 
 // Handle wallet selection
-export const handleWalletSelection = async ({ 
-  wallet, 
-  setSelectedWallet, 
+export const handleWalletSelection = async ({
+  wallet,
+  setSelectedWallet,
   setAccount,
   setProvider,
   setError,
@@ -75,24 +80,24 @@ export const handleWalletSelection = async ({
   connect,
   walletDetectors,
   setIsXdcConnected,
-  XDC_NETWORK
+  XDC_NETWORK,
 }) => {
   setError(null);
-  setCoinbaseStatus('Not connected');
+  setCoinbaseStatus("Not connected");
   setProviderInfo(null);
   let connectedAccount = null;
 
   try {
     // Extract wallet detector functions from the passed object
-    const { 
-      isMetaMaskInstalled, 
-      isPhantomInstalled, 
-      isCoinbaseInstalled, 
-      isWalletConnectAvailable 
+    const {
+      isMetaMaskInstalled,
+      isPhantomInstalled,
+      isCoinbaseInstalled,
+      isWalletConnectAvailable,
     } = walletDetectors;
 
     switch (wallet) {
-      case 'metamask':
+      case "metamask":
         connectedAccount = await connectMetaMask({
           setError,
           setAccount,
@@ -100,27 +105,27 @@ export const handleWalletSelection = async ({
           setProvider,
           setIsXdcConnected,
           XDC_NETWORK,
-          isMetaMaskInstalled
+          isMetaMaskInstalled,
         });
         break;
-      case 'walletconnect':
+      case "walletconnect":
         connectedAccount = await connectWalletConnect({
           setDisabled,
           setError,
           connect,
           setAccount,
-          setSelectedWallet
+          setSelectedWallet,
         });
         break;
-      case 'phantom':
+      case "phantom":
         connectedAccount = await connectPhantom({
           setError,
           setSelectedWallet,
           setAccount,
-          isPhantomInstalled
+          isPhantomInstalled,
         });
         break;
-      case 'coinbase':
+      case "coinbase":
         connectedAccount = await connectCoinbaseWallet({
           setError,
           setCoinbaseStatus,
@@ -128,11 +133,11 @@ export const handleWalletSelection = async ({
           setAccount,
           setProviderInfo,
           testCoinbaseProvider,
-          isCoinbaseInstalled
+          isCoinbaseInstalled,
         });
         break;
       default:
-        setError('Unsupported wallet type');
+        setError("Unsupported wallet type");
     }
   } catch (error) {
     console.error(`Error connecting ${wallet} wallet:`, error);
@@ -146,29 +151,29 @@ export const handleWalletSelection = async ({
     setCurrentScreen(2); // Move to purchase screen
     return connectedAccount;
   }
-  
+
   return null;
 };
 
 // Handle currency selection
-export const handleCurrencySelect = ({ 
-  currency, 
-  setSelectedCurrency, 
-  setShowCurrencySelection 
+export const handleCurrencySelect = ({
+  currency,
+  setSelectedCurrency,
+  setShowCurrencySelection,
 }) => {
   setSelectedCurrency(currency);
   setShowCurrencySelection(false); // Hide the currency selection screen
 };
 
 // Handle purchase
-export const handlePurchase = ({ 
-  ethAmount, 
-  xdcaiAmount, 
-  selectedCurrency, 
-  account, 
-  provider, 
-  setCurrentScreen, 
-  setError 
+export const handlePurchase = ({
+  ethAmount,
+  xdcaiAmount,
+  selectedCurrency,
+  account,
+  provider,
+  setCurrentScreen,
+  setError,
 }) => {
   try {
     // Basic input validation
@@ -176,26 +181,28 @@ export const handlePurchase = ({
       setError(`Please enter a valid ${selectedCurrency} amount`);
       return;
     }
-    
+
     if (!xdcaiAmount || parseFloat(xdcaiAmount) <= 0) {
-      setError('Please enter a valid XDCAI amount');
+      setError("Please enter a valid XDCAI amount");
       return;
     }
-    
+
     if (!account) {
-      setError('No connected wallet account found');
+      setError("No connected wallet account found");
       return;
     }
-    
+
     // In a real app, this would perform the purchase transaction
-    console.log(`Purchasing ${xdcaiAmount} XDCAI with ${ethAmount} ${selectedCurrency} from account ${account}`);
-    
+    console.log(
+      `Purchasing ${xdcaiAmount} XDCAI with ${ethAmount} ${selectedCurrency} from account ${account}`
+    );
+
     // Here you would typically:
     // 1. Validate inputs
     // 2. Convert amounts
     // 3. Send the transaction through the provider
     // 4. Handle transaction response
-    
+
     setCurrentScreen(3); // Move to thank you screen
   } catch (error) {
     console.error("Purchase error:", error);
@@ -208,20 +215,20 @@ export const handleClaim = ({ account, provider, setError }) => {
   try {
     // Validate we have an account
     if (!account) {
-      setError('No connected wallet account found');
+      setError("No connected wallet account found");
       return;
     }
-    
+
     // In a real app, this would perform the token claiming transaction
     console.log(`Claiming tokens for account ${account}`);
-    
+
     // Here you would typically:
     // 1. Create a claim transaction
     // 2. Send through the provider
     // 3. Handle transaction response
-    
+
     // For this demo, we'll just show an alert
-    alert('Tokens claimed successfully!');
+    alert("Tokens claimed successfully!");
   } catch (error) {
     console.error("Claim error:", error);
     setError(`Claim failed: ${error.message}`);

@@ -1,23 +1,25 @@
-import React, { useState } from 'react';
-import { WagmiProvider } from 'wagmi';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import './XDCAIPurchaseFlow.css';
+//src/components/XDCAIPurchaseFlow.jsx
+
+import React, { useState } from "react";
+import { WagmiProvider } from "wagmi";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import "./XDCAIPurchaseFlow.css";
 
 // Import config and components
-import { config } from './config';
-import { InitialScreen } from './InitialScreen';
-import { ConnectWallet } from './ConnectWallet';
-import { PurchaseScreen } from './PurchaseScreen';
-import { ThankYouScreen } from './ThankYouScreen';
-import { ClaimScreen } from './ClaimScreen';
+import { config } from "./config";
+import { InitialScreen } from "./InitialScreen";
+import { ConnectWallet } from "./ConnectWallet";
+import { PurchaseScreen } from "./PurchaseScreen";
+import { ThankYouScreen } from "./ThankYouScreen";
+import { ClaimScreen } from "./ClaimScreen";
 
 // Import utility functions
 import {
   connectToXdcNetwork,
   handleCurrencySelect as currencySelectUtil,
   handlePurchase as purchaseUtil,
-  handleClaim as claimUtil
-} from '../utils';
+  handleClaim as claimUtil,
+} from "../utils";
 
 // Create a React Query client
 const queryClient = new QueryClient();
@@ -34,9 +36,9 @@ const XDCAIPurchaseFlow = () => {
   const [error, setError] = useState(null);
 
   // Token purchase states
-  const [ethAmount, setEthAmount] = useState('0');
-  const [xdcaiAmount, setXdcaiAmount] = useState('0');
-  const [selectedCurrency, setSelectedCurrency] = useState('ETH');
+  const [ethAmount, setEthAmount] = useState("0");
+  const [xdcaiAmount, setXdcaiAmount] = useState("0");
+  const [selectedCurrency, setSelectedCurrency] = useState("ETH");
   const [showCurrencySelection, setShowCurrencySelection] = useState(false);
 
   // Wrapper functions to handle utility actions
@@ -44,7 +46,7 @@ const XDCAIPurchaseFlow = () => {
     currencySelectUtil({
       currency,
       setSelectedCurrency,
-      setShowCurrencySelection
+      setShowCurrencySelection,
     });
   };
 
@@ -55,14 +57,14 @@ const XDCAIPurchaseFlow = () => {
       selectedCurrency,
       account,
       setCurrentScreen,
-      setError
+      setError,
     });
   };
 
   const handleClaim = () => {
     claimUtil({
       account,
-      setError
+      setError,
     });
   };
 
@@ -70,7 +72,6 @@ const XDCAIPurchaseFlow = () => {
     try {
       // Simplified XDC network connection
       setIsXdcConnected(true);
-
     } catch (error) {
       console.error("Error connecting to XDC:", error);
       setError("Failed to connect to XDC Network: " + error.message);
@@ -84,14 +85,14 @@ const XDCAIPurchaseFlow = () => {
         return <InitialScreen setCurrentScreen={setCurrentScreen} />;
       case 1:
         return (
-          <ConnectWallet 
+          <ConnectWallet
             setCurrentScreen={setCurrentScreen}
             setAccount={setAccount}
           />
         );
       case 2:
         return (
-          <PurchaseScreen 
+          <PurchaseScreen
             handleCurrencySelect={handleCurrencySelect}
             handlePurchase={handlePurchase}
             showCurrencySelection={showCurrencySelection}
@@ -106,7 +107,7 @@ const XDCAIPurchaseFlow = () => {
         );
       case 3:
         return (
-          <ThankYouScreen 
+          <ThankYouScreen
             connectToXdcNetwork={handleConnectToXdc}
             setCurrentScreen={setCurrentScreen}
             isXdcConnected={isXdcConnected}
@@ -114,7 +115,7 @@ const XDCAIPurchaseFlow = () => {
         );
       case 4:
         return (
-          <ClaimScreen 
+          <ClaimScreen
             connectToXdcNetwork={handleConnectToXdc}
             handleClaim={handleClaim}
             isXdcConnected={isXdcConnected}
@@ -129,9 +130,7 @@ const XDCAIPurchaseFlow = () => {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <div className="xdcai-purchase-flow">
-          {renderCurrentScreen()}
-        </div>
+        <div className="xdcai-purchase-flow">{renderCurrentScreen()}</div>
       </QueryClientProvider>
     </WagmiProvider>
   );
