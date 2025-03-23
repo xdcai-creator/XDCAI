@@ -4,11 +4,24 @@ import { useAccount, useDisconnect } from "wagmi";
 import { parseEther, parseUnits, formatUnits } from "viem";
 import { ethers } from "ethers";
 import { useContract } from "../hooks/useContract";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import {
   formatTokenPrice,
   formatTokenAmount,
   calculateTimeUntilNextUpdate,
 } from "../utils/tokenUtils";
+import {
+  handlePurchaseError,
+  showPurchaseSuccess,
+  showProcessingTransaction,
+  updateToast,
+} from "../utils/toastHandler";
+import {
+  fetchCurrentPrices,
+  getPrepurchaseQuote,
+} from "../services/priceService";
+import { getNativeCurrencySymbol, formatAddress } from "../utils/chainUtils";
 
 export const PurchaseScreen = ({
   handleCurrencySelect,
@@ -54,6 +67,10 @@ export const PurchaseScreen = ({
   const [isLoadingPrice, setIsLoadingPrice] = useState(true);
   const [transactionHash, setTransactionHash] = useState(null);
   const [tokenDecimals, setTokenDecimals] = useState(18);
+  const [toastId, setToastId] = useState(null);
+  const [currentMarketPrices, setCurrentMarketPrices] = useState({});
+  const [purchaseQuote, setPurchaseQuote] = useState(null);
+  const [isGeneratingQuote, setIsGeneratingQuote] = useState(false);
 
   // Coin network associations with chain IDs
   const coinNetworks = {
@@ -104,7 +121,7 @@ export const PurchaseScreen = ({
       value: 0,
       network: "SOL",
     },
-    { symbol: "XDC", name: "XDC", balance: 0.1, value: 0.01, network: "XDC" },
+    { symbol: "XDC", name: "XDC", balance: 0.1, value: 0.04, network: "XDC" },
   ];
 
   const [activeTab, setActiveTab] = useState("ALL");
@@ -112,14 +129,9 @@ export const PurchaseScreen = ({
   const [coinPrices, setCoinPrices] = useState({});
 
   // Format the address to show as 0x123...abc
-  const formatAddress = (addr) => {
-    if (!addr) return "";
-    return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
-  };
-
   const displayAddress = formatAddress(address);
 
-  // Fetch contract info when contract is loaded
+  // Fetch contract info and market prices when contract is loaded
   useEffect(() => {
     const fetchContractInfo = async () => {
       try {
@@ -138,6 +150,15 @@ export const PurchaseScreen = ({
           const updateIntervalValue =
             await presaleContract.PRICE_UPDATE_INTERVAL();
           setUpdateInterval(updateIntervalValue.toString());
+
+          // Check token contract balance
+          const contractBalance = await tokenContract?.balanceOf(
+            presaleContract.address
+          );
+          console.log(
+            "Contract XDCAI balance:",
+            ethers.utils.formatUnits(contractBalance, 18)
+          );
         }
 
         if (tokenContract && !tokenLoading) {
@@ -147,9 +168,14 @@ export const PurchaseScreen = ({
           const decimals = await tokenContract.decimals();
           setTokenDecimals(decimals);
         }
+
+        // Fetch current market prices
+        const marketPrices = await fetchCurrentPrices();
+        setCurrentMarketPrices(marketPrices);
+        setCoinPrices(marketPrices);
       } catch (err) {
         console.error("Error fetching contract info:", err);
-        setError("Error fetching contract information. Please try again.");
+        // setError("Error fetching contract information. Please try again.");
       } finally {
         setIsLoadingPrice(false);
       }
@@ -182,59 +208,134 @@ export const PurchaseScreen = ({
     }
   }, [activeTab]);
 
-  // Calculate xdcai amount when eth amount changes
+  // Generate purchase quote when amount changes
   useEffect(() => {
-    if (!tokenPrice || tokenPrice === "0") return;
+    // Clear existing quote
+    setPurchaseQuote(null);
 
-    if (ethAmount && !isNaN(ethAmount) && coinPrices[selectedCurrency]) {
-      try {
-        // Convert input amount to USD
-        const inputValue = parseFloat(ethAmount);
-        const coinPrice = coinPrices[selectedCurrency] || 1; // Default to 1 if not available
-
-        const usdValue = inputValue * coinPrice;
-
-        // Convert USD to XDCAI based on token price from contract
-        const tokenPriceInUSD = Number(formatUnits(BigInt(tokenPrice), 18));
-        const calculatedXdcaiAmount = usdValue / tokenPriceInUSD;
-
-        setXdcaiAmount(calculatedXdcaiAmount.toFixed(8));
-      } catch (err) {
-        console.error("Error calculating XDCAI amount:", err);
-      }
-    } else {
-      setXdcaiAmount("0");
+    if (
+      ethAmount &&
+      !isNaN(parseFloat(ethAmount)) &&
+      parseFloat(ethAmount) > 0
+    ) {
+      generatePurchaseQuote();
     }
-  }, [ethAmount, selectedCurrency, coinPrices, tokenPrice, setXdcaiAmount]);
+  }, [ethAmount, selectedCurrency]);
 
-  // Fetch cryptocurrency prices
-  useEffect(() => {
-    const fetchCryptoPrices = async () => {
-      try {
-        // Simplified API call - in real implementation would call CoinGecko or similar
-        const fallbackPrices = {
-          ETH: 3000,
-          BNB: 350,
-          SOL: 100,
-          USDT: 1,
-          USDC: 1,
-          "USDT-BNB": 1,
-          "USDC-BNB": 1,
-          "USDT-SOL": 1,
-          "USDC-SOL": 1,
-          XDC: 0.035,
-        };
-        setCoinPrices(fallbackPrices);
-      } catch (err) {
-        console.error("Error fetching cryptocurrency prices:", err);
+  // Generate a purchase quote
+  const generatePurchaseQuote = async () => {
+    try {
+      if (
+        !ethAmount ||
+        isNaN(parseFloat(ethAmount)) ||
+        parseFloat(ethAmount) <= 0
+      ) {
+        return;
       }
-    };
 
-    fetchCryptoPrices();
-    // Update prices every 60 seconds
-    const interval = setInterval(fetchCryptoPrices, 60000);
-    return () => clearInterval(interval);
-  }, []);
+      setIsGeneratingQuote(true);
+      const quote = await getPrepurchaseQuote(selectedCurrency, ethAmount);
+      setPurchaseQuote(quote);
+
+      // Update XDCAI amount based on the quote
+      setXdcaiAmount(quote.totalTokens.toFixed(8));
+    } catch (err) {
+      console.error("Error generating purchase quote:", err);
+    } finally {
+      setIsGeneratingQuote(false);
+    }
+  };
+
+  // Fetch current market prices
+  const refreshMarketPrices = async () => {
+    try {
+      setIsLoadingPrice(true);
+      const prices = await fetchCurrentPrices();
+      setCurrentMarketPrices(prices);
+      setCoinPrices(prices);
+
+      // Regenerate purchase quote with new prices
+      if (ethAmount && parseFloat(ethAmount) > 0) {
+        await generatePurchaseQuote();
+      }
+    } catch (err) {
+      console.error("Error refreshing market prices:", err);
+    } finally {
+      setIsLoadingPrice(false);
+    }
+  };
+
+  // Check contract token balance
+  const checkContractTokenBalance = async () => {
+    try {
+      if (!presaleContract || !tokenContract) {
+        console.log("Contracts not loaded yet");
+        return;
+      }
+
+      const balance = await tokenContract.balanceOf(presaleContract.address);
+      console.log(
+        "Contract XDCAI balance:",
+        ethers.utils.formatUnits(balance, 18)
+      );
+
+      return balance;
+    } catch (err) {
+      console.error("Error checking token balance:", err);
+    }
+  };
+
+  // Debug purchase calculation
+  const debugPurchaseCalculation = async () => {
+    try {
+      if (!presaleContract) return;
+
+      // Get the current token price
+      const tokenPrice = await presaleContract.tokenPriceUSD();
+      console.log(
+        "XDCAI price (USD):",
+        ethers.utils.formatUnits(tokenPrice, 18)
+      );
+
+      // Get native coin price
+      const nativeCoinPrice = await presaleContract.tokenPrices(
+        ethers.constants.AddressZero
+      );
+      console.log(
+        "Native coin price (USD):",
+        ethers.utils.formatUnits(nativeCoinPrice, 18)
+      );
+
+      // Manual calculation based on purchase amount
+      const purchaseAmount = ethers.utils.parseEther(ethAmount);
+      console.log(
+        "Purchase amount (XDC):",
+        ethers.utils.formatEther(purchaseAmount)
+      );
+
+      // Calculate expected tokens
+      const paymentValueUSD = purchaseAmount
+        .mul(nativeCoinPrice)
+        .div(ethers.utils.parseEther("1"));
+      console.log(
+        "Payment value (USD):",
+        ethers.utils.formatUnits(paymentValueUSD, 18)
+      );
+
+      const baseTokens = paymentValueUSD
+        .mul(ethers.utils.parseEther("1"))
+        .div(tokenPrice);
+      console.log("Base tokens:", ethers.utils.formatUnits(baseTokens, 18));
+
+      // We can't easily calculate bonus tokens from here, but this gives us a starting point
+      console.log(
+        "Required contract balance for this purchase (excluding bonus):",
+        ethers.utils.formatUnits(baseTokens, 18)
+      );
+    } catch (err) {
+      console.error("Error in debug calculation:", err);
+    }
+  };
 
   // Handle input change with decimal validation
   const handleAmountChange = (e) => {
@@ -245,7 +346,7 @@ export const PurchaseScreen = ({
     }
   };
 
-  // Handle purchase with XDCAIPresale2 contract
+  // Handle purchase with price verification
   const handlePurchase = async () => {
     try {
       setError(null);
@@ -267,99 +368,105 @@ export const PurchaseScreen = ({
         return;
       }
 
+      // Verify contract has enough tokens
+      const contractBalance = await checkContractTokenBalance();
+      if (contractBalance && purchaseQuote) {
+        const requiredTokens = ethers.utils.parseUnits(
+          purchaseQuote.totalTokens.toString(),
+          18
+        );
+
+        if (contractBalance.lt(requiredTokens)) {
+          setError(
+            `Purchase amount too large. Maximum available: ${ethers.utils.formatUnits(
+              contractBalance,
+              18
+            )} tokens`
+          );
+          return;
+        }
+      }
+
       setIsProcessing(true);
 
-      // Different logic based on payment method
-      if (
-        selectedCurrency === "ETH" ||
-        selectedCurrency === "BNB" ||
-        selectedCurrency === "XDC"
-      ) {
-        // Native token transaction (ETH, BNB, XDC)
-        const parsedAmount = parseEther(ethAmount);
+      // Show processing toast notification
+      const processingToastId = showProcessingTransaction();
+      setToastId(processingToastId);
 
-        const tx = await presaleContract.buyWithNativeCoin({
-          value: parsedAmount,
-        });
+      // For XDC purchases (native token)
+      if (selectedCurrency === "XDC") {
+        const parsedAmount = ethers.utils.parseEther(ethAmount);
 
-        setTransactionHash(tx.hash);
+        // Add more detailed logging
 
-        // Wait for confirmation
-        const receipt = await tx.wait();
+        console.log("Calling buyWithNativeCoin...");
 
-        if (receipt.status === 1) {
-          // Success - move to thank you screen
-          setCurrentScreen(3);
-        } else {
-          throw new Error("Transaction failed");
+        // Use a more explicit transaction approach with better error handling
+        try {
+          // Create transaction object with explicit gas settings
+          const txOptions = {
+            value: parsedAmount,
+            gasLimit: ethers.utils.hexlify(300000), // Explicit gas limit
+          };
+
+          // Send transaction
+          const tx = await presaleContract.buyWithNativeCoin(txOptions);
+          setTransactionHash(tx.hash);
+
+          // Update toast to show transaction is pending
+          updateToast(processingToastId, {
+            render: "Transaction submitted, waiting for confirmation...",
+          });
+
+          // Wait for confirmation with timeout handling
+          console.log("Waiting for transaction confirmation...");
+          const receipt = await tx.wait();
+          console.log("Transaction confirmed:", receipt);
+
+          if (receipt.status === 1) {
+            console.log("Transaction successful");
+            // Update the processing toast to success
+            showPurchaseSuccess(tx.hash);
+            // Success - move to thank you screen
+            setCurrentScreen(3);
+          } else {
+            throw new Error(
+              "Transaction failed with status: " + receipt.status
+            );
+          }
+        } catch (txError) {
+          console.error("Transaction execution error:", txError);
+
+          // Check for specific error types
+          if (txError.code === "ACTION_REJECTED") {
+            setError("Transaction was rejected by user.");
+            handlePurchaseError(new Error("Transaction rejected by user"));
+          } else if (txError.code === "INSUFFICIENT_FUNDS") {
+            setError("Insufficient funds for gas * price + value.");
+            handlePurchaseError(new Error("Insufficient funds"));
+          } else if (txError.message && txError.message.includes("gas")) {
+            setError(
+              "Transaction failed: Gas estimation failed or out of gas. Try increasing gas limit."
+            );
+            handlePurchaseError(new Error("Gas estimation error"));
+          } else {
+            setError("Transaction failed. Please check console for details.");
+            handlePurchaseError(txError);
+          }
         }
-      } else if (
-        selectedCurrency.includes("USDT") ||
-        selectedCurrency.includes("USDC")
-      ) {
-        // ERC20 Token transactions (USDT, USDC)
-        // First need to approve the token spend
-        const tokenAddress = getTokenAddressForCurrency(selectedCurrency);
-        const tokenContract = new ethers.Contract(
-          tokenAddress,
-          ["function approve(address spender, uint256 amount) returns (bool)"],
-          signer
-        );
-
-        // Calculate amount with proper decimals (usually 6 for USDT/USDC)
-        const decimals = selectedCurrency.includes("USDT") ? 6 : 6;
-        const parsedAmount = parseUnits(ethAmount, decimals);
-
-        // Approve presale contract to spend tokens
-        const approveTx = await tokenContract.approve(
-          presaleContract.address,
-          parsedAmount
-        );
-        await approveTx.wait();
-
-        // Now buy with token
-        const tx = await presaleContract.buyWithToken(
-          tokenAddress,
-          parsedAmount
-        );
-        setTransactionHash(tx.hash);
-
-        // Wait for confirmation
-        const receipt = await tx.wait();
-
-        if (receipt.status === 1) {
-          // Success - move to thank you screen
-          setCurrentScreen(3);
-        } else {
-          throw new Error("Transaction failed");
-        }
-      } else if (selectedCurrency.includes("SOL")) {
-        setError(
-          "Solana payments are not yet supported. Please use an EVM-compatible currency."
-        );
+      } else {
+        // Handle other tokens here
+        setError("Only XDC purchases are supported for testing on Apothem");
+        handlePurchaseError(new Error("Only XDC purchases are supported"));
       }
     } catch (err) {
       console.error("Purchase error:", err);
-      setError(`Purchase failed: ${err.message}`);
+      // Use our toast handler to display friendly error
+      handlePurchaseError(err);
+      // Set a simpler error message in the UI
+      setError("Transaction failed. Please try again or contact support.");
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  // Get token address for a currency
-  const getTokenAddressForCurrency = (currency) => {
-    // This should be updated with actual contract addresses for each token
-    switch (currency) {
-      case "USDT":
-        return "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // Ethereum USDT
-      case "USDC":
-        return "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"; // Ethereum USDC
-      case "USDT-BNB":
-        return "0x55d398326f99059fF775485246999027B3197955"; // BSC USDT
-      case "USDC-BNB":
-        return "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"; // BSC USDC
-      default:
-        throw new Error(`No address found for token: ${currency}`);
     }
   };
 
@@ -616,6 +723,7 @@ export const PurchaseScreen = ({
               borderRadius: "10px",
               marginBottom: "20px",
               textAlign: "center",
+              boxSizing: "border-box",
             }}
           >
             <div

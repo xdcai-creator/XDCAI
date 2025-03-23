@@ -1,8 +1,11 @@
+//frontend/src/contracts/contractAddresses.js
 export const NETWORKS = {
   XDC_MAINNET: 50,
   XDC_TESTNET: 51,
   ETHEREUM: 1,
+  ETHEREUM_GOERLI: 5,
   BSC: 56,
+  BSC_TESTNET: 97,
 };
 
 // Contract addresses - replace with your deployed contract addresses

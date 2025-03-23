@@ -24,9 +24,10 @@ export const useContract = (contractName) => {
           throw new Error("Please install MetaMask or another Ethereum wallet");
         }
 
-        // Create a provider and get the current chain ID
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const { chainId } = await provider.getNetwork();
+        // Create a provider and get the current chain ID - ethers v5 style
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const network = await provider.getNetwork();
+        const chainId = network.chainId;
 
         // Get contract address for current network
         const address = CONTRACT_ADDRESSES[chainId.toString()][contractName];
@@ -53,8 +54,8 @@ export const useContract = (contractName) => {
             throw new Error(`Unknown contract name: ${contractName}`);
         }
 
-        // Create and return contract instance
-        const signer = await provider.getSigner();
+        // Create and return contract instance - ethers v5 style
+        const signer = provider.getSigner();
         const contractInstance = new ethers.Contract(address, abi, signer);
         setContract(contractInstance);
       } catch (err) {

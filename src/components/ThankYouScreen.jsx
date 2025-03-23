@@ -68,10 +68,11 @@ export const ThankYouScreen = ({
       setError(null);
 
       // Submit email to backend API
+      // Submit email to backend API
       const response = await fetch(
         `${
-          process.env.REACT_APP_API_URL || "http://localhost:3000"
-        }/api/user/email`,
+          import.meta.env.VITE_API_URL || "http://localhost:3000"
+        }/api/users/email`,
         {
           method: "POST",
           headers: {
@@ -169,6 +170,7 @@ export const ThankYouScreen = ({
               style={{
                 width: "100%",
                 padding: "12px",
+                boxSizing: "border-box",
                 backgroundColor: "#2a2a2a",
                 border: "1px solid #444",
                 borderRadius: "6px",

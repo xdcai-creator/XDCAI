@@ -1,47 +1,60 @@
+//src/utils/tokenUtils.js
 import { ethers } from "ethers";
 
 /**
  * Format token price for display
- * @param {string|BigInt} priceUSD - Price in USD scaled by 10^18
+ * @param {string|BigNumber} priceUSD - Price in USD scaled by 10^18
  * @returns {string} - Formatted price string
  */
 export const formatTokenPrice = (priceUSD) => {
   if (!priceUSD) return "$0.0000";
 
-  // Convert to ethers BigNumber for proper handling
-  const price = ethers.toBigInt(priceUSD);
+  try {
+    // Convert to ethers BigNumber for proper handling - v5 style
+    const price = ethers.BigNumber.from(priceUSD);
 
-  // Divide by 10^18 to get the actual price
-  const priceInUSD = Number(ethers.formatUnits(price, 18));
+    // Divide by 10^18 to get the actual price
+    const priceInUSD = parseFloat(ethers.utils.formatUnits(price, 18));
 
-  // Format with appropriate decimal places
-  return `$${priceInUSD.toFixed(7)}`;
+    // Format with appropriate decimal places
+    return `$${priceInUSD.toFixed(7)}`;
+  } catch (error) {
+    console.error("Error formatting token price:", error);
+    return "$0.0000";
+  }
 };
 
 /**
  * Format token amount for display
- * @param {string|BigInt} amount - Token amount scaled by token decimals
+ * @param {string|BigNumber} amount - Token amount scaled by token decimals
  * @param {number} decimals - Token decimals
  * @returns {string} - Formatted amount string
  */
 export const formatTokenAmount = (amount, decimals = 18) => {
   if (!amount) return "0";
 
-  const amountBN = ethers.toBigInt(amount);
-  const formattedAmount = Number(ethers.formatUnits(amountBN, decimals));
+  try {
+    const amountBN = ethers.BigNumber.from(amount);
+    const formattedAmount = parseFloat(
+      ethers.utils.formatUnits(amountBN, decimals)
+    );
 
-  // If it's a whole number, don't show decimals
-  if (formattedAmount % 1 === 0) {
-    return formattedAmount.toString();
+    // If it's a whole number, don't show decimals
+    if (formattedAmount % 1 === 0) {
+      return formattedAmount.toString();
+    }
+
+    // For large numbers, limit decimals
+    if (formattedAmount > 1000) {
+      return formattedAmount.toFixed(2);
+    }
+
+    // For smaller numbers, show more decimals
+    return formattedAmount.toFixed(6);
+  } catch (error) {
+    console.error("Error formatting token amount:", error);
+    return "0";
   }
-
-  // For large numbers, limit decimals
-  if (formattedAmount > 1000) {
-    return formattedAmount.toFixed(2);
-  }
-
-  // For smaller numbers, show more decimals
-  return formattedAmount.toFixed(6);
 };
 
 /**
@@ -58,16 +71,26 @@ export const calculateTimeUntilNextUpdate = (
     return { days: 0, hours: 0, minutes: 0, seconds: 0 };
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  const nextUpdateTime = Number(lastUpdateTime) + Number(updateInterval);
-  const timeLeft = Math.max(0, nextUpdateTime - now);
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const lastUpdateTimeNumber =
+      ethers.BigNumber.from(lastUpdateTime).toNumber();
+    const updateIntervalNumber =
+      ethers.BigNumber.from(updateInterval).toNumber();
 
-  const days = Math.floor(timeLeft / 86400);
-  const hours = Math.floor((timeLeft % 86400) / 3600);
-  const minutes = Math.floor((timeLeft % 3600) / 60);
-  const seconds = timeLeft % 60;
+    const nextUpdateTime = lastUpdateTimeNumber + updateIntervalNumber;
+    const timeLeft = Math.max(0, nextUpdateTime - now);
 
-  return { days, hours, minutes, seconds };
+    const days = Math.floor(timeLeft / 86400);
+    const hours = Math.floor((timeLeft % 86400) / 3600);
+    const minutes = Math.floor((timeLeft % 3600) / 60);
+    const seconds = timeLeft % 60;
+
+    return { days, hours, minutes, seconds };
+  } catch (error) {
+    console.error("Error calculating time until next update:", error);
+    return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+  }
 };
 
 /**
@@ -80,15 +103,22 @@ export const calculateTimeUntilNextVesting = (nextUnlockTime) => {
     return { days: 0, hours: 0, minutes: 0, seconds: 0 };
   }
 
-  const now = Math.floor(Date.now() / 1000);
-  const timeLeft = Math.max(0, Number(nextUnlockTime) - now);
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const nextUnlockTimeNumber =
+      ethers.BigNumber.from(nextUnlockTime).toNumber();
+    const timeLeft = Math.max(0, nextUnlockTimeNumber - now);
 
-  const days = Math.floor(timeLeft / 86400);
-  const hours = Math.floor((timeLeft % 86400) / 3600);
-  const minutes = Math.floor((timeLeft % 3600) / 60);
-  const seconds = timeLeft % 60;
+    const days = Math.floor(timeLeft / 86400);
+    const hours = Math.floor((timeLeft % 86400) / 3600);
+    const minutes = Math.floor((timeLeft % 3600) / 60);
+    const seconds = timeLeft % 60;
 
-  return { days, hours, minutes, seconds };
+    return { days, hours, minutes, seconds };
+  } catch (error) {
+    console.error("Error calculating time until next vesting:", error);
+    return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+  }
 };
 
 /**
@@ -99,6 +129,12 @@ export const calculateTimeUntilNextVesting = (nextUnlockTime) => {
 export const formatTimestamp = (timestamp) => {
   if (!timestamp || timestamp === 0) return "N/A";
 
-  const date = new Date(Number(timestamp) * 1000);
-  return date.toLocaleString();
+  try {
+    const timestampNumber = ethers.BigNumber.from(timestamp).toNumber();
+    const date = new Date(timestampNumber * 1000);
+    return date.toLocaleString();
+  } catch (error) {
+    console.error("Error formatting timestamp:", error);
+    return "N/A";
+  }
 };
