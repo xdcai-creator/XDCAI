@@ -1,6 +1,6 @@
-//src/components/ConnectWallet.jsx
-
+// src/components/ConnectWallet.jsx
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAccount } from "wagmi";
 import { WalletOptions } from "./WalletOptions";
 import { SolanaWalletProvider } from "./SolanaWalletProvider";
@@ -8,7 +8,8 @@ import { SolanaConnectButton } from "./SolanaWalletProvider";
 import { SolanaSendToken } from "./SolanaSendToken";
 import { PhantomIcon } from "./icons";
 
-export function ConnectWallet({ setCurrentScreen, setAccount: setAppAccount }) {
+export function ConnectWallet({ setAccount, onTestSolanaConnect }) {
+  const navigate = useNavigate();
   const { isConnected, address } = useAccount();
   const [selectedWallet, setSelectedWallet] = useState(null);
   const [showTest, setShowTest] = useState(false);
@@ -43,11 +44,8 @@ export function ConnectWallet({ setCurrentScreen, setAccount: setAppAccount }) {
 
       // Add account change listener
       window.ethereum.on("accountsChanged", (accounts) => {
-        if (accounts.length > 0) {
-          setAppAccount(accounts[0]);
-        } else {
-          setAppAccount(null);
-          setCurrentScreen(1);
+        if (accounts.length === 0) {
+          navigate("/connect");
         }
       });
     } catch (error) {
@@ -61,23 +59,21 @@ export function ConnectWallet({ setCurrentScreen, setAccount: setAppAccount }) {
   // Update the app's account state when the wallet is connected
   useEffect(() => {
     if (isConnected && address) {
-      setAppAccount(address);
       // Initialize MetaMask if it's the selected wallet
       if (selectedWallet === "metaMask") {
         initializeMetaMask();
       }
       // Automatically proceed to purchase screen when connected
-      setCurrentScreen(2);
+      navigate("/purchase");
     }
-  }, [isConnected, address, setAppAccount, setCurrentScreen, selectedWallet]);
+  }, [isConnected, address, selectedWallet, navigate]);
 
   // Handle test Solana wallet connection
   const handleTestSolanaConnect = async () => {
     try {
       // Simulate wallet connection
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      setAppAccount("test-solana-address");
-      setCurrentScreen(2);
+      navigate("/purchase");
     } catch (error) {
       console.error("Test Solana connection error:", error);
       setError(error.message);
@@ -89,7 +85,6 @@ export function ConnectWallet({ setCurrentScreen, setAccount: setAppAccount }) {
     if (showTest) {
       // When going back to wallet options, reset the test state
       setSelectedWallet(null);
-      setAppAccount(null);
       setError(null);
     }
     setShowTest(!showTest);
@@ -194,3 +189,5 @@ export function ConnectWallet({ setCurrentScreen, setAccount: setAppAccount }) {
     </div>
   );
 }
+
+export default ConnectWallet;

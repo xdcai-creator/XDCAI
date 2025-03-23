@@ -1,4 +1,4 @@
-// File: frontend/src/components/ClaimScreen.jsx
+// src/components/ClaimScreen.jsx
 import React, { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { useContract } from "../hooks/useContract";
@@ -8,7 +8,9 @@ import {
   calculateTimeUntilNextVesting,
 } from "../utils/tokenUtils";
 
-export const ClaimScreen = ({ connectToXdcNetwork, isXdcConnected }) => {
+export const ClaimScreen = () => {
+  // State for XDC connection
+  const [isXdcConnected, setIsXdcConnected] = useState(false);
   const { address, isConnected } = useAccount();
 
   // Contract hooks
@@ -44,6 +46,25 @@ export const ClaimScreen = ({ connectToXdcNetwork, isXdcConnected }) => {
     seconds: 0,
   });
   const [transactionHash, setTransactionHash] = useState(null);
+
+  // Connect to XDC Network
+  const connectToXdcNetwork = async () => {
+    try {
+      setError(null);
+      setIsProcessing(true);
+
+      // Here you would implement your XDC network connection logic
+      // This is a placeholder - actual implementation would connect to XDC
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      setIsXdcConnected(true);
+    } catch (error) {
+      console.error("XDC connection error:", error);
+      setError("Failed to connect to XDC network. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // Fetch vesting information when contracts are loaded and address is connected
   useEffect(() => {
@@ -170,12 +191,6 @@ export const ClaimScreen = ({ connectToXdcNetwork, isXdcConnected }) => {
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  // Format address for display
-  const formatAddress = (addr) => {
-    if (!addr) return "";
-    return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
   };
 
   // Calculate percentage of tokens released

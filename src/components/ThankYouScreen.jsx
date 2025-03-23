@@ -1,16 +1,14 @@
-// File: frontend/src/components/ThankYouScreen.jsx
+// src/components/ThankYouScreen.jsx
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAccount } from "wagmi";
-import { MetamaskIcon } from "./icons";
 import { switchToXdcNetwork, isTestnet } from "./config";
 
-export const ThankYouScreen = ({
-  setCurrentScreen,
-  isXdcConnected,
-  setIsXdcConnected,
-}) => {
+export const ThankYouScreen = () => {
+  const navigate = useNavigate();
   const [error, setError] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isXdcConnected, setIsXdcConnected] = useState(false);
   const [showXdcNetworkDetails, setShowXdcNetworkDetails] = useState(false);
   const { address, isConnected } = useAccount();
   const [transactionDetails, setTransactionDetails] = useState(null);
@@ -24,8 +22,13 @@ export const ThankYouScreen = ({
     if (txDetails) {
       try {
         setTransactionDetails(JSON.parse(txDetails));
+
+        // Clear the localStorage after setting the details
+        // localStorage.removeItem("xdcai_tx_details");
       } catch (err) {
         console.error("Error parsing transaction details:", err);
+
+        navigate("-1");
       }
     }
   }, []);
@@ -67,7 +70,6 @@ export const ThankYouScreen = ({
       setIsSubmittingEmail(true);
       setError(null);
 
-      // Submit email to backend API
       // Submit email to backend API
       const response = await fetch(
         `${
@@ -341,7 +343,7 @@ export const ThankYouScreen = ({
 
       <button
         className="claim-button"
-        onClick={() => setCurrentScreen(4)}
+        onClick={() => navigate("/claim")}
         disabled={!isXdcConnected}
         style={{
           width: "100%",
@@ -361,5 +363,3 @@ export const ThankYouScreen = ({
     </div>
   );
 };
-
-export default ThankYouScreen;

@@ -74,6 +74,7 @@ export const handleWalletSelection = async ({
   setProvider,
   setError,
   setCurrentScreen,
+  navigate,
   setDisabled,
   setCoinbaseStatus,
   setProviderInfo,
@@ -148,7 +149,8 @@ export const handleWalletSelection = async ({
   // If we connected successfully, move to the next screen
   if (connectedAccount) {
     setSelectedWallet(wallet);
-    setCurrentScreen(2); // Move to purchase screen
+    // setCurrentScreen(2); // Move to purchase screen
+    navigate("/purchase");
     return connectedAccount;
   }
 

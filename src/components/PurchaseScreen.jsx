@@ -1,22 +1,22 @@
 // File: frontend/src/components/PurchaseScreen.jsx
+// src/components/PurchaseScreen.jsx
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAccount, useDisconnect } from "wagmi";
-import { parseEther, parseUnits, formatUnits } from "viem";
+import { formatUnits } from "viem";
 import { ethers } from "ethers";
 import { useContract } from "../hooks/useContract";
-import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import {
+  showPurchaseSuccess,
+  showProcessingTransaction,
+  updateToast,
+  handlePurchaseError,
+} from "../utils/toastHandler";
 import {
   formatTokenPrice,
   formatTokenAmount,
   calculateTimeUntilNextUpdate,
 } from "../utils/tokenUtils";
-import {
-  handlePurchaseError,
-  showPurchaseSuccess,
-  showProcessingTransaction,
-  updateToast,
-} from "../utils/toastHandler";
 import {
   fetchCurrentPrices,
   getPrepurchaseQuote,
@@ -24,16 +24,17 @@ import {
 import { getNativeCurrencySymbol, formatAddress } from "../utils/chainUtils";
 
 export const PurchaseScreen = ({
-  handleCurrencySelect,
-  showCurrencySelection,
-  setShowCurrencySelection,
-  selectedCurrency,
-  ethAmount,
-  setEthAmount,
-  xdcaiAmount,
-  setXdcaiAmount,
-  setCurrentScreen,
+  selectedCurrency, // Used in amount calculations
+  ethAmount, // Input amount state
+  setEthAmount, // Setter for input amount
+  xdcaiAmount, // Calculated XDCAI amount
+  setXdcaiAmount, // Setter for XDCAI amount
+  handleCurrencySelect, // Function to select currency
+  showCurrencySelection, // Flag to show currency selection
+  setShowCurrencySelection, // Setter for currency selection
 }) => {
+  const navigate = useNavigate();
+
   // Account related hooks
   const { address, isConnected, chainId: currentChainId } = useAccount();
   const { disconnect } = useDisconnect();
@@ -425,10 +426,20 @@ export const PurchaseScreen = ({
 
           if (receipt.status === 1) {
             console.log("Transaction successful");
+
+            const txDetails = {
+              amount: ethAmount,
+              currency: selectedCurrency,
+              tokens: xdcaiAmount,
+              hash: tx.hash,
+            };
+
+            localStorage.setItem("xdcai_tx_details", JSON.stringify(txDetails));
+
             // Update the processing toast to success
             showPurchaseSuccess(tx.hash);
             // Success - move to thank you screen
-            setCurrentScreen(3);
+            navigate("/thank-you");
           } else {
             throw new Error(
               "Transaction failed with status: " + receipt.status
@@ -499,7 +510,7 @@ export const PurchaseScreen = ({
     try {
       await disconnect();
       // Only change screen after disconnect is complete
-      setCurrentScreen(1);
+      navigate("/connect");
     } catch (error) {
       console.error("Disconnect error:", error);
     }
@@ -508,9 +519,9 @@ export const PurchaseScreen = ({
   // Check connection status - redirect to connect screen if disconnected
   useEffect(() => {
     if (!isConnected) {
-      setCurrentScreen(1);
+      navigate("/connect");
     }
-  }, [isConnected, setCurrentScreen]);
+  }, [isConnected]);
 
   const calculateBonus = (amount, coinPrice) => {
     if (!amount || !coinPrice) return 0;
