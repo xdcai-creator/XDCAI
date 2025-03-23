@@ -6,12 +6,14 @@ export const InitialScreen = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="xdcai-purchase-container">
-      <h1>
+    <div className="xdcai-purchase-containerd">
+      <div className="text-[5px] text-white bg-[#425152]">
         The future of AI-powered agents is here - Grab $XDCAI at presale prices
         & fuel the AI revolution
-      </h1>
-      <p className="cant-find-tokens">Can't find tokens in your wallet?</p>
+      </div>
+      <p className="cant-find-tokens text-center">
+        Can't find tokens in your wallet?
+      </p>
       <h2>
         Take advantage of Huge Early Staking Rewards by becoming an early
         adopter!

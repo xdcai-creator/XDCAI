@@ -13,8 +13,12 @@ export const ThankYouScreen = () => {
   const { address, isConnected } = useAccount();
   const [transactionDetails, setTransactionDetails] = useState(null);
   const [emailInput, setEmailInput] = useState("");
+
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
+
+  const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
     // Check for transaction details in localStorage
@@ -32,6 +36,46 @@ export const ThankYouScreen = () => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    const checkUserEmail = async () => {
+      if (!address) return;
+
+      try {
+        setIsCheckingEmail(true);
+
+        // Call the API to check if user has email
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_API_URL || "http://localhost:3000"
+          }/api/users/walletAddress?walletAddress=${address}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.email) {
+            setUserEmail(data.email);
+            setEmailSubmitted(true);
+
+            //to trigger purchase notification email on backend
+            // await storeEmailApi(data.email);
+          } else {
+            setEmailSubmitted(false);
+          }
+        } else {
+          // If user not found or other error, we need to collect email
+          setEmailSubmitted(false);
+        }
+      } catch (err) {
+        console.error("Error checking user email:", err);
+        setEmailSubmitted(false);
+      } finally {
+        setIsCheckingEmail(false);
+      }
+    };
+
+    checkUserEmail();
+  }, [address]);
 
   const handleXdcNetworkConnect = async () => {
     try {
@@ -66,9 +110,36 @@ export const ThankYouScreen = () => {
       return;
     }
 
+    storeEmailApi(emailInput);
+  };
+
+  const storeEmailApi = async (_emailInput) => {
     try {
       setIsSubmittingEmail(true);
       setError(null);
+
+      if (!address) {
+        setError("Wallet not connected");
+        return;
+      }
+
+      const txDetails =
+        transactionDetails ||
+        JSON.parse(localStorage.getItem("xdcai_tx_details") || "{}");
+      console.log("txDetails ", txDetails);
+
+      const transformedTransactionData = {
+        amount: txDetails.amount || "0",
+        tokenType: txDetails.currency || "ETH",
+        tokenDecimals:
+          txDetails.currency === "USDT" || txDetails.currency === "USDC"
+            ? 6
+            : 18,
+        tokensReceived: txDetails.tokens || "0",
+        // Any additional data you want to send
+        bonusTokens: txDetails.bonusTokens || "0",
+        hash: txDetails.hash || "",
+      };
 
       // Submit email to backend API
       const response = await fetch(
@@ -81,8 +152,9 @@ export const ThankYouScreen = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            email: emailInput,
+            email: _emailInput,
             walletAddress: address,
+            transactionData: transformedTransactionData,
           }),
         }
       );
@@ -101,58 +173,16 @@ export const ThankYouScreen = () => {
     }
   };
 
-  return (
-    <div className="thank-you-screen">
-      <h2
-        style={{ fontSize: "26px", textAlign: "center", marginBottom: "20px" }}
-      >
-        Thanks for purchasing XDCAI tokens!
-      </h2>
-
-      {/* Transaction details */}
-      {transactionDetails && (
+  if (!userEmail) {
+    if (!emailSubmitted) {
+      return (
         <div
           style={{
-            backgroundColor: "rgba(0, 100, 0, 0.1)",
-            border: "1px solid #90EE90",
-            borderRadius: "10px",
-            padding: "15px",
-            marginBottom: "20px",
-          }}
-        >
-          <p
-            style={{
-              textAlign: "center",
-              color: "#90EE90",
-              fontWeight: "bold",
-              marginBottom: "10px",
-            }}
-          >
-            Purchase Successful!
-          </p>
-          <p style={{ margin: "5px 0" }}>
-            <strong>Amount:</strong> {transactionDetails.amount}{" "}
-            {transactionDetails.currency}
-          </p>
-          <p style={{ margin: "5px 0" }}>
-            <strong>Tokens:</strong> {transactionDetails.tokens} XDCAI
-          </p>
-          <p style={{ margin: "5px 0", wordBreak: "break-all" }}>
-            <strong>Transaction:</strong> {transactionDetails.hash.slice(0, 10)}
-            ...{transactionDetails.hash.slice(-8)}
-          </p>
-        </div>
-      )}
-
-      {/* Email collection form */}
-      {!emailSubmitted ? (
-        <div
-          style={{
-            backgroundColor: "#1a1a1a",
-            border: "1px solid #333",
-            borderRadius: "10px",
+            // backgroundColor: "#1a1a1a",
+            // border: "1px solid #333",
+            // borderRadius: "10px",
             padding: "20px",
-            marginBottom: "20px",
+            // marginBottom: "20px",
           }}
         >
           <h3 style={{ textAlign: "center", margin: "0 0 15px 0" }}>
@@ -199,25 +229,37 @@ export const ThankYouScreen = () => {
             </button>
           </form>
         </div>
-      ) : (
-        <div
-          style={{
-            backgroundColor: "rgba(0, 100, 0, 0.1)",
-            border: "1px solid #90EE90",
-            borderRadius: "10px",
-            padding: "15px",
-            marginBottom: "20px",
-            textAlign: "center",
-          }}
-        >
-          <p style={{ color: "#90EE90", fontWeight: "bold" }}>
-            Email submitted successfully!
-          </p>
-          <p style={{ fontSize: "14px", color: "#aaa", margin: "10px 0 0 0" }}>
-            You'll receive updates about your tokens and project developments.
-          </p>
-        </div>
-      )}
+      );
+    }
+
+    return (
+      <div
+        style={{
+          backgroundColor: "rgba(0, 100, 0, 0.1)",
+          border: "1px solid #90EE90",
+          borderRadius: "10px",
+          padding: "15px",
+          marginBottom: "20px",
+          textAlign: "center",
+        }}
+      >
+        <p style={{ color: "#90EE90", fontWeight: "bold" }}>
+          Email submitted successfully!
+        </p>
+        <p style={{ fontSize: "14px", color: "#aaa", margin: "10px 0 0 0" }}>
+          You'll receive updates about your tokens and project developments.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="thank-you-screen">
+      <h2
+        style={{ fontSize: "26px", textAlign: "center", marginBottom: "20px" }}
+      >
+        Thanks for purchasing XDCAI tokens!
+      </h2>
 
       <p style={{ textAlign: "center", margin: "15px 0" }}>
         In order to claim your tokens, please connect to the XDC network.

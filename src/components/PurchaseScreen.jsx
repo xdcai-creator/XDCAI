@@ -23,6 +23,8 @@ import {
 } from "../services/priceService";
 import { getNativeCurrencySymbol, formatAddress } from "../utils/chainUtils";
 
+import * as Icons from "./icons/CryptoIcons";
+
 export const PurchaseScreen = ({
   selectedCurrency, // Used in amount calculations
   ethAmount, // Input amount state
@@ -379,10 +381,12 @@ export const PurchaseScreen = ({
 
         if (contractBalance.lt(requiredTokens)) {
           setError(
-            `Purchase amount too large. Maximum available: ${ethers.utils.formatUnits(
-              contractBalance,
-              18
-            )} tokens`
+            `Purchase amount too large.`
+            // Maximum available:
+            //${ethers.utils.formatUnits(
+            //   contractBalance,
+            //   18
+            // )} tokens`
           );
           return;
         }
@@ -431,6 +435,7 @@ export const PurchaseScreen = ({
               amount: ethAmount,
               currency: selectedCurrency,
               tokens: xdcaiAmount,
+              bonusTokens: bonusAmount.toString() || "0",
               hash: tx.hash,
             };
 
@@ -529,12 +534,31 @@ export const PurchaseScreen = ({
     // Calculate USD value
     const usdValue = parseFloat(amount) * coinPrice;
 
+    let percent;
+
     // Apply bonus tiers
-    if (usdValue > 5000) return 10; // 10% for >$5000
-    if (usdValue > 2000) return 4; // 4% for >$2000 and ≤$5000
-    if (usdValue >= 1000) return 2; // 2% for ≥$1000 and ≤$2000
-    return 0; // 0% for <$1000
+    if (usdValue > 5000) percent = 10;
+    // 10% for >$5000
+    else if (usdValue > 2000) percent = 4;
+    // 4% for >$2000 and ≤$5000
+    else if (usdValue >= 1000) percent = 2;
+    // 2% for ≥$1000 and ≤$2000
+    else percent = 0; // 0% for <$1000
+
+    const bonus = (percent / 100) * amount;
+    console.log("usdValue ", usdValue);
+    console.log("percent ", percent);
+    return bonus;
   };
+
+  const bonusAmount = React.useMemo(() => {
+    console.log("ethAmount ", ethAmount);
+    console.log("coinPrices[selectedCurrency] ", coinPrices[selectedCurrency]);
+    if (!ethAmount || !coinPrices[selectedCurrency]) return 0;
+    return calculateBonus(ethAmount, coinPrices[selectedCurrency]);
+  }, [ethAmount, coinPrices[selectedCurrency]]);
+
+  console.log(" bonusAmount ", bonusAmount);
 
   return (
     <div
@@ -543,47 +567,57 @@ export const PurchaseScreen = ({
     >
       {showCurrencySelection ? (
         <div className="currency-selection">
-          <h2>Select a currency</h2>
+          <h2 className="text-lg text-white font-medium mb-4">
+            Select a currency
+          </h2>
 
-          <div className="currency-tabs">
+          {/* Tabs */}
+          <div className="flex mb-4">
             <button
-              className={`currency-tab ${activeTab === "ALL" ? "active" : ""}`}
+              className={`px-4 py-2 text-sm ${
+                activeTab === "ALL"
+                  ? "bg-[#00FF7F] text-black"
+                  : "bg-[#1A1A1A] text-white"
+              } rounded-l-md`}
               onClick={() => setActiveTab("ALL")}
             >
               ALL
             </button>
             <button
-              className={`currency-tab ${activeTab === "ETH" ? "active" : ""}`}
+              className={`px-4 py-2 text-sm flex items-center ${
+                activeTab === "ETH"
+                  ? "bg-[#00FF7F] text-black"
+                  : "bg-[#1A1A1A] text-white"
+              }`}
               onClick={() => setActiveTab("ETH")}
             >
               <img
-                src={getCurrencyLogo("ETH")}
+                src={Icons.EthereumIcon}
                 alt="ETH"
-                style={{ width: "16px", height: "16px", marginRight: "4px" }}
+                className="w-4 h-4 mr-1"
               />{" "}
               ETH
             </button>
             <button
-              className={`currency-tab ${activeTab === "BSC" ? "active" : ""}`}
+              className={`px-4 py-2 text-sm flex items-center ${
+                activeTab === "BSC"
+                  ? "bg-[#00FF7F] text-black"
+                  : "bg-[#1A1A1A] text-white"
+              }`}
               onClick={() => setActiveTab("BSC")}
             >
-              <img
-                src={getCurrencyLogo("BNB")}
-                alt="BSC"
-                style={{ width: "16px", height: "16px", marginRight: "4px" }}
-              />{" "}
-              BSC
+              <img src={Icons.BnbIcon} alt="BSC" className="w-4 h-4 mr-1" /> BSC
             </button>
             <button
-              className={`currency-tab ${activeTab === "XDC" ? "active" : ""}`}
-              onClick={() => setActiveTab("XDC")}
+              className={`px-4 py-2 text-sm flex items-center ${
+                activeTab === "SOL"
+                  ? "bg-[#00FF7F] text-black"
+                  : "bg-[#1A1A1A] text-white"
+              } rounded-r-md`}
+              onClick={() => setActiveTab("SOL")}
             >
-              <img
-                src={getCurrencyLogo("XDC")}
-                alt="XDC"
-                style={{ width: "16px", height: "16px", marginRight: "4px" }}
-              />{" "}
-              XDC
+              <img src={Icons.SolanaIcon} alt="SOL" className="w-4 h-4 mr-1" />{" "}
+              SOL
             </button>
           </div>
 
@@ -700,17 +734,10 @@ export const PurchaseScreen = ({
             >
               Can't find tokens in your wallet?
             </p>
-            <h2
-              style={{
-                textAlign: "center",
-                margin: "15px 0",
-                fontSize: "24px",
-                lineHeight: "1.3",
-              }}
-            >
+            <div className=" text-[5px] !text-white bg-[#425152]">
               Take advantage of Huge Early Staking Rewards by becoming an early
               adopter!
-            </h2>
+            </div>
             <div
               style={{
                 textAlign: "center",
@@ -722,36 +749,6 @@ export const PurchaseScreen = ({
               }}
             >
               BUY ${tokenSymbol} PRESALE NOW!
-            </div>
-          </div>
-
-          {/* Dynamic Price Display Area */}
-          <div
-            style={{
-              width: "100%",
-              padding: "15px",
-              backgroundColor: "#3a4a4a",
-              borderRadius: "10px",
-              marginBottom: "20px",
-              textAlign: "center",
-              boxSizing: "border-box",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "18px",
-                fontWeight: "bold",
-                marginBottom: "5px",
-              }}
-            >
-              Current Price:{" "}
-              {isLoadingPrice ? "Loading..." : formatTokenPrice(tokenPrice)}
-            </div>
-
-            <div style={{ fontSize: "14px", color: "#ddd" }}>
-              Next price increase in: {nextPriceIncrease.days}d{" "}
-              {nextPriceIncrease.hours}h {nextPriceIncrease.minutes}m{" "}
-              {nextPriceIncrease.seconds}s
             </div>
           </div>
 
@@ -882,61 +879,19 @@ export const PurchaseScreen = ({
               </p>
             </div>
 
-            {/* Network info display */}
-            <div
-              style={{
-                textAlign: "center",
-                color: "#aaa",
-                backgroundColor: "rgba(30, 30, 30, 0.7)",
-                padding: "10px",
-                borderRadius: "5px",
-                marginBottom: "15px",
-                fontSize: "14px",
-              }}
-            >
-              {currentChainId &&
-                `Connected to ${
-                  currentChainId === 1
-                    ? "Ethereum"
-                    : currentChainId === 56
-                    ? "Binance Smart Chain"
-                    : currentChainId === 50
-                    ? "XDC Network"
-                    : currentChainId === 51
-                    ? "XDC Apothem Testnet"
-                    : `Chain ID: ${currentChainId}`
-                }`}
-            </div>
-
-            {/* Bonus tokens info */}
-            <div
-              style={{
-                textAlign: "center",
-                color: "#aaa",
-                backgroundColor: "rgba(30, 30, 30, 0.7)",
-                padding: "10px",
-                borderRadius: "5px",
-                marginBottom: "15px",
-                fontSize: "14px",
-              }}
-            >
-              <p style={{ margin: 0, color: "#90EE90", fontWeight: "bold" }}>
-                Bonus Tokens
-              </p>
-              <p style={{ margin: "5px 0 0 0" }}>
-                2% bonus for purchases ≥ $1,000
-                <br />
-                4% bonus for purchases {">"} $2,000
-                <br />
-                10% bonus for purchases {">"} $5,000
-              </p>
-            </div>
-            <div className="bonus-display">
-              <p>
-                Current bonus:{" "}
-                {calculateBonus(ethAmount, coinPrices[selectedCurrency])}%
-              </p>
-            </div>
+            {bonusAmount > 0 && (
+              <div className="mb-4">
+                <p className="text-gray-400 text-xs mb-1">
+                  Extra $XDCAI Bonus Token
+                </p>
+                <input
+                  type="text"
+                  value={bonusAmount.toFixed(8)}
+                  readOnly
+                  className="w-full bg-[#1A1A1A] rounded-md border border-[#333333] rounded-md p-3 text-white text-lg"
+                />
+              </div>
+            )}
 
             {/* Error message - displayed only if there's an error */}
             {error && (
