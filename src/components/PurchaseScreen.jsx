@@ -1,20 +1,17 @@
-//src/components/PurchaseScreen.jsx
+// File: frontend/src/components/PurchaseScreen.jsx
 import React, { useState, useEffect } from "react";
+import { useAccount, useDisconnect } from "wagmi";
+import { parseEther, parseUnits, formatUnits } from "viem";
+import { ethers } from "ethers";
+import { useContract } from "../hooks/useContract";
 import {
-  useAccount,
-  useDisconnect,
-  useEnsName,
-  useSendTransaction,
-  useWaitForTransactionReceipt,
-  useSwitchChain,
-} from "wagmi";
-import { useWriteContract } from "wagmi";
-import { parseEther, parseUnits } from "viem";
-import { mainnet, base, bsc, optimism } from "wagmi/chains";
+  formatTokenPrice,
+  formatTokenAmount,
+  calculateTimeUntilNextUpdate,
+} from "../utils/tokenUtils";
 
 export const PurchaseScreen = ({
   handleCurrencySelect,
-  handlePurchase: originalHandlePurchase,
   showCurrencySelection,
   setShowCurrencySelection,
   selectedCurrency,
@@ -27,61 +24,49 @@ export const PurchaseScreen = ({
   // Account related hooks
   const { address, isConnected, chainId: currentChainId } = useAccount();
   const { disconnect } = useDisconnect();
-  const { data: ensName } = useEnsName({ address });
 
-  // Network switching hook
+  // Contract hooks
   const {
-    switchChain,
-    isPending: isSwitchingChain,
-    error: switchChainError,
-  } = useSwitchChain();
+    contract: presaleContract,
+    loading: presaleLoading,
+    error: presaleError,
+  } = useContract("XDCAIPresale2");
 
-  // Transaction hooks
   const {
-    data: hash,
-    error: txError,
-    isPending: isSendingTx,
-    sendTransaction,
-  } = useSendTransaction();
-
-  // Combined pending state for all async operations
-  const isPending = isSendingTx || isSwitchingChain;
-
-  const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({
-      hash,
-    });
+    contract: tokenContract,
+    loading: tokenLoading,
+    error: tokenError,
+  } = useContract("XDCAIToken");
 
   // Local state for transaction status
   const [error, setError] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Format the address to show as 0x123...abc
-  const formatAddress = (addr) => {
-    if (!addr) return "";
-    return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
-  };
-
-  const displayAddress = ensName || formatAddress(address);
-
-  // Presale contract addresses on different chains - with checksummed addresses
-  const presaleContractAddresses = {
-    [mainnet.id]: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", // ETH mainnet address
-    [bsc.id]: "0x9a67f1940164d0318612b497e8e6038f902a00a4", // BSC address - checksummed
-    [optimism.id]: "0x45C27821303a643F1Fc7F2EB3Cd4835A5Cd4909c", // Optimism address
-  };
+  const [tokenPrice, setTokenPrice] = useState(null);
+  const [lastUpdateTime, setLastUpdateTime] = useState(null);
+  const [updateInterval, setUpdateInterval] = useState(null);
+  const [nextPriceIncrease, setNextPriceIncrease] = useState({
+    days: 0,
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  });
+  const [tokenSymbol, setTokenSymbol] = useState("XDCAI");
+  const [isLoadingPrice, setIsLoadingPrice] = useState(true);
+  const [transactionHash, setTransactionHash] = useState(null);
+  const [tokenDecimals, setTokenDecimals] = useState(18);
 
   // Coin network associations with chain IDs
   const coinNetworks = {
-    ETH: { name: "ETH", chainId: mainnet.id },
-    BNB: { name: "BSC", chainId: bsc.id },
-    SOL: { name: "SOL", chainId: null }, // Solana isn't an EVM chain, will need special handling
-    USDT: { name: "ETH", chainId: mainnet.id },
-    USDC: { name: "ETH", chainId: mainnet.id },
-    "USDT-BNB": { name: "BSC", chainId: bsc.id },
-    "USDC-BNB": { name: "BSC", chainId: bsc.id },
+    ETH: { name: "ETH", chainId: 1 },
+    BNB: { name: "BSC", chainId: 56 },
+    SOL: { name: "SOL", chainId: null }, // Solana isn't an EVM chain
+    USDT: { name: "ETH", chainId: 1 },
+    USDC: { name: "ETH", chainId: 1 },
+    "USDT-BNB": { name: "BSC", chainId: 56 },
+    "USDC-BNB": { name: "BSC", chainId: 56 },
     "USDT-SOL": { name: "SOL", chainId: null },
     "USDC-SOL": { name: "SOL", chainId: null },
+    XDC: { name: "XDC", chainId: 50 },
   };
 
   // Original coin data with added network property
@@ -119,86 +104,286 @@ export const PurchaseScreen = ({
       value: 0,
       network: "SOL",
     },
+    { symbol: "XDC", name: "XDC", balance: 0.1, value: 0.01, network: "XDC" },
   ];
 
   const [activeTab, setActiveTab] = useState("ALL");
   const [filteredCoins, setFilteredCoins] = useState(coinData);
   const [coinPrices, setCoinPrices] = useState({});
-  const [xdcPrice, setXdcPrice] = useState(0.0033722);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Watch for transaction confirmation and proceed to thank you screen
+  // Format the address to show as 0x123...abc
+  const formatAddress = (addr) => {
+    if (!addr) return "";
+    return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
+  };
+
+  const displayAddress = formatAddress(address);
+
+  // Fetch contract info when contract is loaded
   useEffect(() => {
-    if (isConfirmed) {
-      // Reset any error messages
-      setError(null);
-      // Move to thank you screen after successful transaction
-      setCurrentScreen(3);
-    }
-  }, [isConfirmed, setCurrentScreen]);
+    const fetchContractInfo = async () => {
+      try {
+        if (presaleContract && !presaleLoading) {
+          setIsLoadingPrice(true);
 
-  // Update error state when transaction or chain switching error occurs
-  useEffect(() => {
-    if (txError) {
-      setError(txError.message || "Transaction failed");
-      setIsProcessing(false);
-    }
+          // Get current token price
+          const price = await presaleContract.tokenPriceUSD();
+          setTokenPrice(price.toString());
 
-    if (switchChainError) {
-      setError(switchChainError.message || "Failed to switch network");
-      setIsProcessing(false);
-    }
-  }, [txError, switchChainError]);
+          // Get last update time and update interval
+          const lastUpdateTimeValue =
+            await presaleContract.lastPriceUpdateTime();
+          setLastUpdateTime(lastUpdateTimeValue.toString());
 
-  // Handle currency selection and network switching
-  const handleNetworkCurrencySelect = async (currency) => {
-    try {
-      // First update the selected currency in the UI
-      handleCurrencySelect(currency);
-
-      // Get the required chain for this currency
-      const requiredNetwork = coinNetworks[currency];
-
-      // If this currency requires a chain switch and isn't SOL
-      if (
-        requiredNetwork.chainId &&
-        requiredNetwork.chainId !== currentChainId
-      ) {
-        setError(null);
-        setIsProcessing(true);
-
-        try {
-          // Switch chain and wait for completion
-          await switchChain({ chainId: requiredNetwork.chainId });
-
-          // Wait for a short period to ensure wallet state is updated
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-
-          // Reload the page to ensure all states are fresh
-          window.location.reload();
-        } catch (error) {
-          console.error("Failed to switch chains:", error);
-          setError(
-            `Failed to switch to ${requiredNetwork.name} network. ${error.message}`
-          );
-          setIsProcessing(false);
+          const updateIntervalValue =
+            await presaleContract.PRICE_UPDATE_INTERVAL();
+          setUpdateInterval(updateIntervalValue.toString());
         }
+
+        if (tokenContract && !tokenLoading) {
+          const symbol = await tokenContract.symbol();
+          setTokenSymbol(symbol);
+
+          const decimals = await tokenContract.decimals();
+          setTokenDecimals(decimals);
+        }
+      } catch (err) {
+        console.error("Error fetching contract info:", err);
+        setError("Error fetching contract information. Please try again.");
+      } finally {
+        setIsLoadingPrice(false);
+      }
+    };
+
+    fetchContractInfo();
+  }, [presaleContract, presaleLoading, tokenContract, tokenLoading]);
+
+  // Update next price increase timer
+  useEffect(() => {
+    if (!lastUpdateTime || !updateInterval) return;
+
+    const intervalId = setInterval(() => {
+      const timeLeft = calculateTimeUntilNextUpdate(
+        lastUpdateTime,
+        updateInterval
+      );
+      setNextPriceIncrease(timeLeft);
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [lastUpdateTime, updateInterval]);
+
+  // Filter coins based on active tab
+  useEffect(() => {
+    if (activeTab === "ALL") {
+      setFilteredCoins(coinData);
+    } else {
+      setFilteredCoins(coinData.filter((coin) => coin.network === activeTab));
+    }
+  }, [activeTab]);
+
+  // Calculate xdcai amount when eth amount changes
+  useEffect(() => {
+    if (!tokenPrice || tokenPrice === "0") return;
+
+    if (ethAmount && !isNaN(ethAmount) && coinPrices[selectedCurrency]) {
+      try {
+        // Convert input amount to USD
+        const inputValue = parseFloat(ethAmount);
+        const coinPrice = coinPrices[selectedCurrency] || 1; // Default to 1 if not available
+
+        const usdValue = inputValue * coinPrice;
+
+        // Convert USD to XDCAI based on token price from contract
+        const tokenPriceInUSD = Number(formatUnits(BigInt(tokenPrice), 18));
+        const calculatedXdcaiAmount = usdValue / tokenPriceInUSD;
+
+        setXdcaiAmount(calculatedXdcaiAmount.toFixed(8));
+      } catch (err) {
+        console.error("Error calculating XDCAI amount:", err);
+      }
+    } else {
+      setXdcaiAmount("0");
+    }
+  }, [ethAmount, selectedCurrency, coinPrices, tokenPrice, setXdcaiAmount]);
+
+  // Fetch cryptocurrency prices
+  useEffect(() => {
+    const fetchCryptoPrices = async () => {
+      try {
+        // Simplified API call - in real implementation would call CoinGecko or similar
+        const fallbackPrices = {
+          ETH: 3000,
+          BNB: 350,
+          SOL: 100,
+          USDT: 1,
+          USDC: 1,
+          "USDT-BNB": 1,
+          "USDC-BNB": 1,
+          "USDT-SOL": 1,
+          "USDC-SOL": 1,
+          XDC: 0.035,
+        };
+        setCoinPrices(fallbackPrices);
+      } catch (err) {
+        console.error("Error fetching cryptocurrency prices:", err);
+      }
+    };
+
+    fetchCryptoPrices();
+    // Update prices every 60 seconds
+    const interval = setInterval(fetchCryptoPrices, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handle input change with decimal validation
+  const handleAmountChange = (e) => {
+    const value = e.target.value;
+    // Allow empty string or valid decimal up to 8 decimal places
+    if (value === "" || /^\d*\.?\d{0,8}$/.test(value)) {
+      setEthAmount(value);
+    }
+  };
+
+  // Handle purchase with XDCAIPresale2 contract
+  const handlePurchase = async () => {
+    try {
+      setError(null);
+      setTransactionHash(null);
+
+      // Basic input validation
+      if (!ethAmount || parseFloat(ethAmount) <= 0) {
+        setError(`Please enter a valid ${selectedCurrency} amount`);
+        return;
       }
 
-      // For SOL and other non-EVM chains
+      if (!address) {
+        setError("No connected wallet account found");
+        return;
+      }
+
+      if (!presaleContract) {
+        setError("Contract not loaded. Please try again.");
+        return;
+      }
+
+      setIsProcessing(true);
+
+      // Different logic based on payment method
       if (
-        currency === "SOL" ||
-        currency === "USDT-SOL" ||
-        currency === "USDC-SOL"
+        selectedCurrency === "ETH" ||
+        selectedCurrency === "BNB" ||
+        selectedCurrency === "XDC"
       ) {
+        // Native token transaction (ETH, BNB, XDC)
+        const parsedAmount = parseEther(ethAmount);
+
+        const tx = await presaleContract.buyWithNativeCoin({
+          value: parsedAmount,
+        });
+
+        setTransactionHash(tx.hash);
+
+        // Wait for confirmation
+        const receipt = await tx.wait();
+
+        if (receipt.status === 1) {
+          // Success - move to thank you screen
+          setCurrentScreen(3);
+        } else {
+          throw new Error("Transaction failed");
+        }
+      } else if (
+        selectedCurrency.includes("USDT") ||
+        selectedCurrency.includes("USDC")
+      ) {
+        // ERC20 Token transactions (USDT, USDC)
+        // First need to approve the token spend
+        const tokenAddress = getTokenAddressForCurrency(selectedCurrency);
+        const tokenContract = new ethers.Contract(
+          tokenAddress,
+          ["function approve(address spender, uint256 amount) returns (bool)"],
+          signer
+        );
+
+        // Calculate amount with proper decimals (usually 6 for USDT/USDC)
+        const decimals = selectedCurrency.includes("USDT") ? 6 : 6;
+        const parsedAmount = parseUnits(ethAmount, decimals);
+
+        // Approve presale contract to spend tokens
+        const approveTx = await tokenContract.approve(
+          presaleContract.address,
+          parsedAmount
+        );
+        await approveTx.wait();
+
+        // Now buy with token
+        const tx = await presaleContract.buyWithToken(
+          tokenAddress,
+          parsedAmount
+        );
+        setTransactionHash(tx.hash);
+
+        // Wait for confirmation
+        const receipt = await tx.wait();
+
+        if (receipt.status === 1) {
+          // Success - move to thank you screen
+          setCurrentScreen(3);
+        } else {
+          throw new Error("Transaction failed");
+        }
+      } else if (selectedCurrency.includes("SOL")) {
         setError(
-          "Solana payments are coming soon. Please select an EVM compatible currency."
+          "Solana payments are not yet supported. Please use an EVM-compatible currency."
         );
       }
-    } catch (error) {
-      console.error("Currency selection error:", error);
-      setError(error.message);
+    } catch (err) {
+      console.error("Purchase error:", err);
+      setError(`Purchase failed: ${err.message}`);
+    } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // Get token address for a currency
+  const getTokenAddressForCurrency = (currency) => {
+    // This should be updated with actual contract addresses for each token
+    switch (currency) {
+      case "USDT":
+        return "0xdAC17F958D2ee523a2206206994597C13D831ec7"; // Ethereum USDT
+      case "USDC":
+        return "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"; // Ethereum USDC
+      case "USDT-BNB":
+        return "0x55d398326f99059fF775485246999027B3197955"; // BSC USDT
+      case "USDC-BNB":
+        return "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d"; // BSC USDC
+      default:
+        throw new Error(`No address found for token: ${currency}`);
+    }
+  };
+
+  // Get logo URL for a currency
+  const getCurrencyLogo = (symbol) => {
+    switch (symbol) {
+      case "ETH":
+        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzYyN0VFQSIvPjxnIGZpbGw9IiNGRkYiIGZpbGwtcnVsZT0ibm9uemVybyI+PHBhdGggZmlsbC1vcGFjaXR5PSIuNjAyIiBkPSJNMTYuNDk4IDR2OS4xMDNMOCA1VjE2LjQ5OHoiLz48cGF0aCBkPSJNMTYuNDk4IDRMMjUgMTYuNDk4TDE2LjQ5OCAxMy4xMDNWNHoiLz48cGF0aCBmaWxsLW9wYWNpdHk9Ii42MDIiIGQ9Ik0xNi40OTggMjEuOTc2djYuMDIxTDggMTZsMTYuNDk4IDguMjV2LTIuMjc0TDE2LjQ5OCAyMS45NzZ6Ii8+PHBhdGggZD0iTTE2LjQ5OCAyNy45OTVWMjEuOTc2TDI1IDE2TDE2LjQ5OCAyNy45OTV6Ii8+PHBhdGggZmlsbC1vcGFjaXR5PSIuMiIgZD0iTTE2LjQ5OCAyMC41NzNMMjQuODk1IDE2LjE5TDE2LjQ5OCAxMy4xMDR2Ny40N3oiLz48cGF0aCBmaWxsLW9wYWNpdHk9Ii42MDIiIGQ9Ik04IDEhNi4xOWw4LjQ5OCA3LjQ3VjEzLjFMOCAxNi4xOTB6Ii8+PC9nPjwvZz48L3N2Zz4=";
+      case "BNB":
+        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0JBMkYiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIuMTE2IDE0LjQwNEwxNiAxMC41MmwzLjg4NiAzLjg4NiAyLjI2IDIuMjZMMTYgMjIuNzg0bC02LjE0NC02LjE0NCAxLjE0NC0xLjE0NCAxLjExNi0xLjA5MnpNOS4wNzYgMTYuNDY0bDEuMTQ0LTEuMTQgNS43OCA1Ljc3OC01Ljc4IDUuNzgtMS4xNDQtMS4xNDRMMTMuNzA4IDIxbC00LjYzMi00LjUzNnptMTMuODQ4IDBsLTEuMTQ0IDEuMTQ0TDE3LjE0OCAyMWw0LjYzMiA0LjYzNiAxLjE0NC0xLjE0NC01Ljc4LTUuNzggNS43OC01Ljc3OHpNMTYgOEw4IDE2bDEuMTQ0IDEuMTQ0TDE2IDEwLjI4OGw2Ljg1NiA2Ljg1NkwyNCAuNnoiLz48L2c+PC9zdmc+";
+      case "SOL":
+        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiM2ODBBNCI+PC9jaXJjbGU+PHBhdGggZD0iTTkuOTQgMjAuMTg4YzEuMjM1IDAgNC40MSAwIDUuNTI5IDBhLjQxLjQxIDAgMSAwIDAtLjgyMWgtNS41M2EuNDEuNDEgMCAwIDEgMC0uODIxaDYuMzUyYS40MS40MSAwIDEgMCAwLS44MjJIMTAuNzZhLjQxLjQxIDAgMCAxIDAtLjgyMWg0LjcwNWMxLjIzNSAwIDIuODc2LTEuMjMzIDMuNjk0LTIuMDVsLjIwNy0uMjA4Yy4yMjktLjIyOC42LTYuNDEyLjYtOC4wMzhNMjIuMDU4IDEyLjYzNWgtNS41M2EuNDEuNDEgMCAwIDEgMC0uODIyaDYuMzUyYS40MS40MSAwIDEgMCAwLS44MjJIMTYuMjlhLjQxLjQxIDAgMCAxIDAtLjgyMWg0LjcwNGMxLjIzNiAwIDIuODc3LTEuMjMyIDMuNjk1LTIuMDUiIGZpbGw9IiNGRkYiPjwvcGF0aD48cGF0aCBkPSJNMjIuMDU4IDE5LjM2NmEuNDEuNDEgMCAwIDEgMCAuODIyaC01LjUzYS40MS40MSAwIDAgMCAwIC44MjFoNi4zNTJhLjQxLjQxIDAgMSAxIDAgLjgyMkgxNi4yOWEuNDEuNDEgMCAwIDAgMCAuODIxaDQuNzA0YzEuMjM2IDAgMi44NzcgMS4yMzMgMy42OTUgMi4wNWwuMjA3LjIwN2MuMjI5LjIyOS42IDYuNDEzLjYgOC4wMzgiIGZpbGw9IiNGRkYiPjwvcGF0aD48cGF0aCBkPSJNOS45NCAyMy41MTFoNS41MjlhLjQxLjQxIDAgMSAxIDAgLjgyMmgtNi4zNTJhLjQxLjQxIDAgMCAwIDAgLjgyMWg1LjU4OWEuNDEuNDEgMCAwIDEgMCAuODIxSDkuOTRjLTEuMjM2IDAtMi44NzcgMS4yMzMtMy42OTQgMi4wNSIgZmlsbD0iI0ZGRiI+PC9wYXRoPjwvZz48L3N2Zz4=";
+      case "USDT":
+      case "USDT-BNB":
+      case "USDT-SOL":
+        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzI2QTE3QiIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xNy45MjIgMTcuMzgzdi0uMDAyYy0uMTEuMDA4LS42NzcuMDQyLTEuOTQyLjA0Mi0xLjAxIDAtMS43MjEtLjAzLTEuOTcxLS4wNDJ2LjAwM2MtMy44ODgtLjE3MS02Ljc5LS44NDgtNi43OS0xLjY1OCAwLS44MDkgMi45MDItMS40ODYgNi43OS0xLjY2di0yLjEyYzEuMjYuMDEzIDEuOTcuMDQ0IDEuOTguMDQ0bC4wMDMtLjAwMmMuMDEgMCAuNzE3LS4wMzEgMS45NjEtLjA0NHYyLjEyMmMzLjg4OC4xNzMgNi43OS44NSA2Ljc5IDEuNjU5IDAgLjgxLTIuOTAyIDEuNDg2LTYuNzkgMS42NTdtMC0zLjk2NnYtLjAwMWMtLjEyOS4wMS0uNzI0LjA0NC0xLjk0Mi4wNDQtMS4wMTggMC0xLjc2NS0uMDMtMS45NzEtLjA0M3YuMDAxYy00LjkxNC0uMTcxLTguNTgtLjk4LTguNTgtMS44NTVzMy42NjYtMS42ODQgOC41OC0xLjg1NnYuMDAxYzEuMjQ1LjAyIDEuOTg4LjA0NyAxLjk4OC4wNDcuMDExIDAgLjcxNy0uMDMgMS45NDQtLjA0OHYtLjAwMWM0LjkxNS4xNzIgOC41OC45OCA4LjU4IDEuODU2cy0zLjY2NSAxLjY4NC04LjU4IDEuODU1bS0xLjk1MSA1LjI3NHYzLjU3MmMtLjAwMSAwLS43MS4wMzctMS45NjMuMDM3LTEuMDI1IDAtMS43MzQtLjAzLTEuOTg4LS4wMzd2LTMuNTcyYy4yNTQuMDA4Ljk2Mi4wMzcgMS45ODguMDM3IDEuMjUxIDAgMS45Ni0uMDM3IDEuOTYzLS4wMzciLz48L2c+PC9zdmc+";
+      case "USDC":
+      case "USDC-BNB":
+      case "USDC-SOL":
+        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzJDNzVDQSIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xNS45OTEgMjZDMTEuMDMgMjYgNi45OTggMjEuOTcgNi45OTggMTcuMDExYzAtNC45NTggNC4wMzMtOC45OSA4Ljk5My04Ljk5IDQuOTU4IDAgOC45OTEgNC4wMzMgOC45OTEgOC45OSAwIDQuOTU5LTQuMDMzIDguOTg5LTguOTkgOC45ODl6bTQuNDQ1LTUuMzAzYS43MTMuNzEzIDAgMCAwLS43MTIuNzEuNzEzLjcxMyAwIDAgMCAxLjQyNC4wMDEuNzEuNzEgMCAwIDAtLjcxMi0uNzExem0wLTIuODVhLjc5NC43OTQgMCAwIDAgLjc5MS0uNzkxLjc5Ni43OTYgMCAwIDAtLjc5MS0uNzkzLjc5NS43OTUgMCAwIDAtLjc5Mi43OTMuNzk0Ljc5NCAwIDAgMCAuNzkyLjc5em0tOC44MjEgMi44NWEuNzExLjcxMSAwIDEgMC0uMDAxIDEuNDIyLjcxMi43MTIgMCAwIDAgLjcxMi0uNzEuNzEzLjcxMyAwIDAgMC0uNzExLS43MTJ6bTAtMi44NWEuNzkyLjc5MiAwIDEgMCAwIDEuNTgzLjc5Mi43OTIgMCAwIDAgMC0xLjU4MnptOC44MTUtMi4wNjJjLS40NzMgMC0uNzQyLS41MDYtLjQyOS0uODQyYTYuMjI1IDYuMjI1IDAgMCAwIDEuNzcyLTQuMzM1IDYuMjMgNi4yMyAwIDAgMC0xLjc1NS00LjMxM2MtLjMyNS0uMzQ0LS4wNTEtLjg5NS40NTQtLjg5NS41MDYgMCAuNzA3LjU1NC4zODkuODk0YTYuMjMxIDYuMjMxIDAgMCAwLTEuNzcxIDQuMzE0IDYuMjI3IDYuMjI3IDAgMCAwIDEuNzU0IDQuMzM2Yy4zMjMuMzQzLjA0Ni44NDEtLjQxNC44NDF6bS0xLjk0NS4wMDRjLS40NyAwLS43MjctLjQ3Ni0uNDE0LTguMzQuMDcyLS4wNzguMTU2LS4xNTcuMjQyLS4yMzkuMzQ3LS4zMjUuODU2LS4wNDguODU2LjQ0NHYuMDAyYzAgLjUwNy0uNTU2LjcwNS0uODg5LjM4Ni0uMDY5LS4wNjYtLjE0Mi0uMTM1LS4yMTktLjIwNmEzLjcxIDMuNzEgMCAwIDAtMS4wMzEtMi41NzFjLS43ODMtLjc4NC0xLjgxNC0xLjIxNi0yLjkxNi0xLjIxNmgtLjAxNWMtMS4xMDYuMDAzLTIuMTM5LjQzOC0yLjkyMSAxLjIyM2EzLjcxNiAzLjcxNiAwIDAgMC0xLjAyNSAyLjU3MnYuMDAzYTMuNzEzIDMuNzEzIDAgMCAwIDEuMDI0IDIuNTcxIDMuNzMgMy43MyAwIDAgMCAyLjkyMiAxLjIyM2guM3YtLjAwNGMwLS41MDYuNTU2LS43MDQuODktLjM4NS4wNjguMDY1LjE0Mi4xMzQuMjE4LjIwNS4zNDcuMzI0LjA0OS44My0uNDEuODNINy41OWMtLjQ3IDAtLjczLS40NS0uNDEyLS44MTkuMDg2LS4xLjE4MS0uMjA3LjI4NS0uMzE4LjMyLS4zMzcuODk2LS4wNjEuOS4zODcuMDUxLS4wNC4xMDMtLjA4LjE1Ni0uMTJhNi4xMzggNi4xMzggMCAwIDAgMS43MTUtNC4yMjcgNi4xNDQgNi4xNDQgMCAwIDAtMS43MDEtNC4yMDZ2LS4wMDJhNi4xNjYgNi4xNjYgMCAwIDAtNC4zNDItMS44MDNoLS4wMmE2LjE2NyA2LjE2NyAwIDAgMC00LjM1MyAxLjgwM2gtLjAwMUE2LjE0ODYuMTQ4IDAgMCAwIC4wODMgMTdoLjAwMWE2LjE0MiA2LjE0MiAwIDAgMCAxLjcxNCA0LjIzYy4wNTUuMDQ1LjExLjA4NC4xNjMuMTI0LjAxLjQzOC41OC42OTQuODg2LjM3OC4xLS4xMDQuMTk2LS4yMTEuMjg2LS4zMjMuMzEzLS4zNjQuMDQ5LS44MDktLjQxOS0uODA5LS40NzQgMC0uNzQuNTA3LS40MzEuODQuNjI0LjY3MiAxLjI5IDEuMjM4IDIuMTEgMS42MzlhNy4zMDUgNy4zMDUgMCAwIDAgMi45MS43MjdjMS4wMyAwIDEuOTgtLjI1MSAyLjkxLS43MjdhNy4zMDcgNy4zMDcgMCAwIDAgMi4xMS0xLjY0Yy4zMS0uMzMxLjA0NC0uODM4LS40My0uODM4eiIvPjwvZz48L3N2Zz4=";
+      case "XDC":
+        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNjQgNjQiPjxkZWZzPjxzdHlsZT4uYXtmaWxsOiMxZDFkMWQ7fS5ie2ZpbGw6IzEwMGYwZDt9LmN7ZmlsbDp1cmwoI2EpO30uZHtmaWxsOnVybCgjYik7fS5le2ZpbGw6dXJsKCNjKTt9LmZ7ZmlsbDp1cmwoI2QpO308L3N0eWxlPjxsaW5lYXJHcmFkaWVudCBpZD0iYSIgeDE9IjQ4IiB5MT0iMTYiIHgyPSI0OCIgeTI9IjQ4IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMmI3ZmUyIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTQzYzdlIi8+PC9saW5lYXJHcmFkaWVudD48bGluZWFyR3JhZGllbnQgaWQ9ImIiIHgxPSIxNiIgeTE9IjE2IiB4Mj0iMTYiIHkyPSI0OCIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzViYTRmYyIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzI3NTRlMiIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJjIiB4MT0iMTYiIHkxPSIzMiIgeDI9IjQ4IiB5Mj0iMzIiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxMDZmZmYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMwMDM2YjciLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0iZCIgeDE9IjE2IiB5MT0iMzIiIHgyPSI0OCIgeTI9IjMyIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMWQ5MGZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMDA0NWU4Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHRpdGxlPnhpbmZpbjwvdGl0bGU+PHBhdGggY2xhc3M9ImEiIGQ9Ik0zMiw1OGEyNiwyNiwwLDEsMSwxOC4zODQtNy42MTZBMjUuODU3LDI1Ljg1NywwLDAsMSwzMiw1OFoiLz48cGF0aCBjbGFzcz0iYiIgZD0iTTMyLDhBMjQsMjQsMCwxLDEsOCwzMiwyNC4wMjcsMjQuMDI3LDAsMCwxLDMyLDhtMC00QTI4LDI4LDAsMSwwLDYwLDMyLDI4LDI4LDAsMCwwLDMyLDRaIi8+PHBhdGggY2xhc3M9ImMiIGQ9Ik00OCw0OEgzMlYzMmgxNlYxNmgxNlY0OFoiLz48cGF0aCBjbGFzcz0iZCIgZD0iTTMyLDQ4SDE2VjMyaDEyaDB2MTZaIi8+PC9zdmc+";
+      default:
+        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNDNEM0QzQiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTYgN2E5IDkgMCAxIDAgMCAxOCA5IDkgMCAwIDAgMC0xOHptMS40OTggMTMuMDc4aC0zdi0zLjA1OWgzdjMuMDZ6bTAtNC4zNzVoLTN2LTQuNzAzaDN2NC43MDN6Ii8+PC9nPjwvc3ZnPg==";
     }
   };
 
@@ -220,234 +405,18 @@ export const PurchaseScreen = ({
     }
   }, [isConnected, setCurrentScreen]);
 
-  // Fetch real-time cryptocurrency prices
-  const fetchCryptoPrices = async () => {
-    setIsLoading(true);
-    try {
-      // Simplified API call - in real implementation would call CoinGecko or similar
-      const fallbackPrices = {
-        ETH: 3000,
-        BNB: 350,
-        SOL: 100,
-        USDT: 1,
-        USDC: 1,
-        "USDT-BNB": 1,
-        "USDC-BNB": 1,
-        "USDT-SOL": 1,
-        "USDC-SOL": 1,
-      };
-      setCoinPrices(fallbackPrices);
-    } finally {
-      setIsLoading(false);
-    }
+  const calculateBonus = (amount, coinPrice) => {
+    if (!amount || !coinPrice) return 0;
+
+    // Calculate USD value
+    const usdValue = parseFloat(amount) * coinPrice;
+
+    // Apply bonus tiers
+    if (usdValue > 5000) return 10; // 10% for >$5000
+    if (usdValue > 2000) return 4; // 4% for >$2000 and ≤$5000
+    if (usdValue >= 1000) return 2; // 2% for ≥$1000 and ≤$2000
+    return 0; // 0% for <$1000
   };
-
-  // Filter coins based on active tab
-  useEffect(() => {
-    if (activeTab === "ALL") {
-      setFilteredCoins(coinData);
-    } else {
-      setFilteredCoins(coinData.filter((coin) => coin.network === activeTab));
-    }
-  }, [activeTab]);
-
-  // Fetch prices on component mount
-  useEffect(() => {
-    fetchCryptoPrices();
-    // Update prices every 60 seconds
-    const interval = setInterval(fetchCryptoPrices, 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Calculate xdcai amount when eth amount changes
-  useEffect(() => {
-    if (ethAmount && coinPrices[selectedCurrency]) {
-      const ethValue = parseFloat(ethAmount) * coinPrices[selectedCurrency];
-      const xdcaiValue = ethValue / xdcPrice;
-      setXdcaiAmount(xdcaiValue.toFixed(8));
-    } else {
-      setXdcaiAmount("0");
-    }
-  }, [ethAmount, selectedCurrency, coinPrices, xdcPrice, setXdcaiAmount]);
-
-  // Handle input change with decimal validation
-  const handleAmountChange = (e) => {
-    const value = e.target.value;
-    // Allow empty string or valid decimal up to 8 decimal places
-    if (value === "" || /^\d*\.?\d{0,8}$/.test(value)) {
-      setEthAmount(value);
-    }
-  };
-
-  // Add the ERC20 ABI
-  const erc20ABI = [
-    {
-      name: "transfer",
-      type: "function",
-      inputs: [
-        { name: "recipient", type: "address" },
-        { name: "amount", type: "uint256" },
-      ],
-      outputs: [{ name: "", type: "bool" }],
-      stateMutability: "nonpayable",
-    },
-  ];
-
-  // Add token addresses mapping
-  const tokenAddresses = {
-    USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // Ethereum mainnet
-    "USDC-BNB": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", // BSC
-    USDT: "0xdAC17F958D2ee523a2206206994597C13D831ec7", // Ethereum mainnet
-    "USDT-BNB": "0x55d398326f99059fF775485246999027B3197955", // BSC
-  };
-
-  // Replace usePrepareContractWrite and useContractWrite with useWriteContract
-  const {
-    writeContract,
-    data: tokenHash,
-    isLoading: isTokenSending,
-  } = useWriteContract();
-
-  // Update the handleEnhancedPurchase function
-  const handleEnhancedPurchase = async () => {
-    try {
-      setError(null);
-
-      // Basic input validation
-      if (!ethAmount || parseFloat(ethAmount) <= 0) {
-        setError(`Please enter a valid ${selectedCurrency} amount`);
-        return;
-      }
-
-      if (!xdcaiAmount || parseFloat(xdcaiAmount) <= 0) {
-        setError("Please enter a valid XDCAI amount");
-        return;
-      }
-
-      if (!address) {
-        setError("No connected wallet account found");
-        return;
-      }
-
-      // Verify we're on the correct network
-      const requiredNetwork = coinNetworks[selectedCurrency];
-      if (requiredNetwork.chainId !== currentChainId) {
-        setError(
-          `Please switch to ${requiredNetwork.name} network to continue`
-        );
-        return;
-      }
-
-      setIsProcessing(true);
-
-      // Handle different payment methods
-      if (selectedCurrency === "ETH" || selectedCurrency === "BNB") {
-        // Native token transactions
-        const targetAddress = presaleContractAddresses[currentChainId];
-        if (!targetAddress) {
-          throw new Error(
-            `No contract address found for chain ID ${currentChainId}`
-          );
-        }
-
-        sendTransaction({
-          to: targetAddress,
-          value: parseEther(ethAmount),
-        });
-      } else if (
-        selectedCurrency.includes("USDC") ||
-        selectedCurrency.includes("USDT")
-      ) {
-        // Token transactions using writeContract
-        const tokenAddress = tokenAddresses[selectedCurrency];
-        const targetAddress = presaleContractAddresses[currentChainId];
-
-        if (!tokenAddress || !targetAddress) {
-          throw new Error("Invalid token or contract address");
-        }
-
-        writeContract({
-          address: tokenAddress,
-          abi: erc20ABI,
-          functionName: "transfer",
-          args: [targetAddress, parseUnits(ethAmount || "0", 6)],
-        });
-      } else if (selectedCurrency.includes("SOL")) {
-        setError("Solana payments are not yet supported");
-        setIsProcessing(false);
-      }
-    } catch (error) {
-      console.error("Purchase error:", error);
-      setError(`Purchase failed: ${error.message}`);
-      setIsProcessing(false);
-    }
-  };
-
-  // Get logo URL for a currency - using more reliable URLs
-  const getCurrencyLogo = (symbol) => {
-    switch (symbol) {
-      case "ETH":
-        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzYyN0VFQSIvPjxnIGZpbGw9IiNGRkYiIGZpbGwtcnVsZT0ibm9uemVybyI+PHBhdGggZmlsbC1vcGFjaXR5PSIuNjAyIiBkPSJNMTYuNDk4IDR2OS4xMDNMOCA1VjE2LjQ5OHoiLz48cGF0aCBkPSJNMTYuNDk4IDRMMjUgMTYuNDk4TDE2LjQ5OCAxMy4xMDNWNHoiLz48cGF0aCBmaWxsLW9wYWNpdHk9Ii42MDIiIGQ9Ik0xNi40OTggMjEuOTc2djYuMDIxTDggMTZsMTYuNDk4IDguMjV2LTIuMjc0TDE2LjQ5OCAyMS45NzZ6Ii8+PHBhdGggZD0iTTE2LjQ5OCAyNy45OTVWMjEuOTc2TDI1IDE2TDE2LjQ5OCAyNy45OTV6Ii8+PHBhdGggZmlsbC1vcGFjaXR5PSIuMiIgZD0iTTE2LjQ5OCAyMC41NzNMMjQuODk1IDE2LjE5TDE2LjQ5OCAxMy4xMDR2Ny40N3oiLz48cGF0aCBmaWxsLW9wYWNpdHk9Ii42MDIiIGQ9Ik04IDEhNi4xOWw4LjQ5OCA3LjQ3VjEzLjFMOCAxNi4xOTB6Ii8+PC9nPjwvZz48L3N2Zz4=";
-      case "BNB":
-        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0JBMkYiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIuMTE2IDE0LjQwNEwxNiAxMC41MmwzLjg4NiAzLjg4NiAyLjI2IDIuMjZMMTYgMjIuNzg0bC02LjE0NC02LjE0NCAxLjE0NC0xLjE0NCAxLjExNi0xLjA5MnpNOS4wNzYgMTYuNDY0bDEuMTQ0LTEuMTQgNS43OCA1Ljc3OC01Ljc4IDUuNzgtMS4xNDQtMS4xNDRMMTMuNzA4IDIxbC00LjYzMi00LjUzNnptMTMuODQ4IDBsLTEuMTQ0IDEuMTQ0TDE3LjE0OCAyMWw0LjYzMiA0LjYzNiAxLjE0NC0xLjE0NC01Ljc4LTUuNzggNS43OC01Ljc3OHpNMTYgOEw4IDE2bDEuMTQ0IDEuMTQ0TDE2IDEwLjI4OGw2Ljg1NiA2Ljg1NkwyNCAuNnoiLz48L2c+PC9zdmc+";
-      case "SOL":
-        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiM2ODBBNCI+PC9jaXJjbGU+PHBhdGggZD0iTTkuOTQgMjAuMTg4YzEuMjM1IDAgNC40MSAwIDUuNTI5IDBhLjQxLjQxIDAgMSAwIDAtLjgyMWgtNS41M2EuNDEuNDEgMCAwIDEgMC0uODIxaDYuMzUyYS40MS40MSAwIDEgMCAwLS44MjJIMTAuNzZhLjQxLjQxIDAgMCAxIDAtLjgyMWg0LjcwNWMxLjIzNSAwIDIuODc2LTEuMjMzIDMuNjk0LTIuMDVsLjIwNy0uMjA4Yy4yMjktLjIyOC42LTYuNDEyLjYtOC4wMzhNMjIuMDU4IDEyLjYzNWgtNS41M2EuNDEuNDEgMCAwIDEgMC0uODIyaDYuMzUyYS40MS40MSAwIDEgMCAwLS44MjJIMTYuMjlhLjQxLjQxIDAgMCAxIDAtLjgyMWg0LjcwNGMxLjIzNiAwIDIuODc3LTEuMjMyIDMuNjk1LTIuMDUiIGZpbGw9IiNGRkYiPjwvcGF0aD48cGF0aCBkPSJNMjIuMDU4IDE5LjM2NmEuNDEuNDEgMCAwIDEgMCAuODIyaC01LjUzYS40MS40MSAwIDAgMCAwIC44MjFoNi4zNTJhLjQxLjQxIDAgMSAxIDAgLjgyMkgxNi4yOWEuNDEuNDEgMCAwIDAgMCAuODIxaDQuNzA0YzEuMjM2IDAgMi44NzcgMS4yMzMgMy42OTUgMi4wNWwuMjA3LjIwN2MuMjI5LjIyOS42IDYuNDEzLjYgOC4wMzgiIGZpbGw9IiNGRkYiPjwvcGF0aD48cGF0aCBkPSJNOS45NCAyMy41MTFoNS41MjlhLjQxLjQxIDAgMSAxIDAgLjgyMmgtNi4zNTJhLjQxLjQxIDAgMCAwIDAgLjgyMWg1LjU4OWEuNDEuNDEgMCAwIDEgMCAuODIxSDkuOTRjLTEuMjM2IDAtMi44NzcgMS4yMzMtMy42OTQgMi4wNSIgZmlsbD0iI0ZGRiI+PC9wYXRoPjwvZz48L3N2Zz4=";
-      case "USDT":
-      case "USDT-BNB":
-      case "USDT-SOL":
-        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzI2QTE3QiIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xNy45MjIgMTcuMzgzdi0uMDAyYy0uMTEuMDA4LS42NzcuMDQyLTEuOTQyLjA0Mi0xLjAxIDAtMS43MjEtLjAzLTEuOTcxLS4wNDJ2LjAwM2MtMy44ODgtLjE3MS02Ljc5LS44NDgtNi43OS0xLjY1OCAwLS44MDkgMi45MDItMS40ODYgNi43OS0xLjY2di0yLjEyYzEuMjYuMDEzIDEuOTcuMDQ0IDEuOTguMDQ0bC4wMDMtLjAwMmMuMDEgMCAuNzE3LS4wMzEgMS45NjEtLjA0NHYyLjEyMmMzLjg4OC4xNzMgNi43OS44NSA2Ljc5IDEuNjU5IDAgLjgxLTIuOTAyIDEuNDg2LTYuNzkgMS42NTdtMC0zLjk2NnYtLjAwMWMtLjEyOS4wMS0uNzI0LjA0NC0xLjk0Mi4wNDQtMS4wMTggMC0xLjc2NS0uMDMtMS45NzEtLjA0M3YuMDAxYy00LjkxNC0uMTcxLTguNTgtLjk4LTguNTgtMS44NTVzMy42NjYtMS42ODQgOC41OC0xLjg1NnYuMDAxYzEuMjQ1LjAyIDEuOTg4LjA0NyAxLjk4OC4wNDcuMDExIDAgLjcxNy0uMDMgMS45NDQtLjA0OHYtLjAwMWM0LjkxNS4xNzIgOC41OC45OCA4LjU4IDEuODU2cy0zLjY2NSAxLjY4NC04LjU4IDEuODU1bS0xLjk1MSA1LjI3NHYzLjU3MmMtLjAwMSAwLS43MS4wMzctMS45NjMuMDM3LTEuMDI1IDAtMS43MzQtLjAzLTEuOTg4LS4wMzd2LTMuNTcyYy4yNTQuMDA4Ljk2Mi4wMzcgMS45ODguMDM3IDEuMjUxIDAgMS45Ni0uMDM3IDEuOTYzLS4wMzciLz48L2c+PC9zdmc+";
-      case "USDC":
-      case "USDC-BNB":
-      case "USDC-SOL":
-        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzJDNzVDQSIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xNS45OTEgMjZDMTEuMDMgMjYgNi45OTggMjEuOTcgNi45OTggMTcuMDExYzAtNC45NTggNC4wMzMtOC45OSA4Ljk5My04Ljk5IDQuOTU4IDAgOC45OTEgNC4wMzMgOC45OTEgOC45OSAwIDQuOTU5LTQuMDMzIDguOTg5LTguOTkgOC45ODl6bTQuNDQ1LTUuMzAzYS43MTMuNzEzIDAgMCAwLS43MTIuNzEuNzEzLjcxMyAwIDAgMCAxLjQyNC4wMDEuNzEuNzEgMCAwIDAtLjcxMi0uNzExem0wLTIuODVhLjc5NC43OTQgMCAwIDAgLjc5MS0uNzkxLjc5Ni43OTYgMCAwIDAtLjc5MS0uNzkzLjc5NS43OTUgMCAwIDAtLjc5Mi43OTMuNzk0Ljc5NCAwIDAgMCAuNzkyLjc5em0tOC44MjEgMi44NWEuNzExLjcxMSAwIDEgMC0uMDAxIDEuNDIyLjcxMi43MTIgMCAwIDAgLjcxMi0uNzEuNzEzLjcxMyAwIDAgMC0uNzExLS43MTJ6bTAtMi44NWEuNzkyLjc5MiAwIDEgMCAwIDEuNTgzLjc5Mi43OTIgMCAwIDAgMC0xLjU4MnptOC44MTUtMi4wNjJjLS40NzMgMC0uNzQyLS41MDYtLjQyOS0uODQyYTYuMjI1IDYuMjI1IDAgMCAwIDEuNzcyLTQuMzM1IDYuMjMgNi4yMyAwIDAgMC0xLjc1NS00LjMxM2MtLjMyNS0uMzQ0LS4wNTEtLjg5NS40NTQtLjg5NS41MDYgMCAuNzA3LjU1NC4zODkuODk0YTYuMjMxIDYuMjMxIDAgMCAwLTEuNzcxIDQuMzE0IDYuMjI3IDYuMjI3IDAgMCAwIDEuNzU0IDQuMzM2Yy4zMjMuMzQzLjA0Ni44NDEtLjQxNC44NDF6bS0xLjk0NS4wMDRjLS40NyAwLS43MjctLjQ3Ni0uNDE0LTguMzQuMDcyLS4wNzguMTU2LS4xNTcuMjQyLS4yMzkuMzQ3LS4zMjUuODU2LS4wNDguODU2LjQ0NHYuMDAyYzAgLjUwNy0uNTU2LjcwNS0uODg5LjM4Ni0uMDY5LS4wNjYtLjE0Mi0uMTM1LS4yMTktLjIwNmEzLjcxIDMuNzEgMCAwIDAtMS4wMzEtMi41NzFjLS43ODMtLjc4NC0xLjgxNC0xLjIxNi0yLjkxNi0xLjIxNmgtLjAxNWMtMS4xMDYuMDAzLTIuMTM5LjQzOC0yLjkyMSAxLjIyM2EzLjcxNiAzLjcxNiAwIDAgMC0xLjAyNSAyLjU3MnYuMDAzYTMuNzEzIDMuNzEzIDAgMCAwIDEuMDI0IDIuNTcxIDMuNzMgMy43MyAwIDAgMCAyLjkyMiAxLjIyM2guM3YtLjAwNGMwLS41MDYuNTU2LS43MDQuODktLjM4NS4wNjguMDY1LjE0Mi4xMzQuMjE4LjIwNS4zNDcuMzI0LjA0OS44My0uNDEuODNINy41OWMtLjQ3IDAtLjczLS40NS0uNDEyLS44MTkuMDg2LS4xLjE4MS0uMjA3LjI4NS0uMzE4LjMyLS4zMzcuODk2LS4wNjEuOS4zODcuMDUxLS4wNC4xMDMtLjA4LjE1Ni0uMTJhNi4xMzggNi4xMzggMCAwIDAgMS43MTUtNC4yMjcgNi4xNDQgNi4xNDQgMCAwIDAtMS43MDEtNC4yMDZ2LS4wMDJhNi4xNjYgNi4xNjYgMCAwIDAtNC4zNDItMS44MDNoLS4wMmE2LjE2NyA2LjE2NyAwIDAgMC00LjM1MyAxLjgwM2gtLjAwMUE2LjE0ODYuMTQ4IDAgMCAwIC4wODMgMTdoLjAwMWE2LjE0MiA2LjE0MiAwIDAgMCAxLjcxNCA0LjIzYy4wNTUuMDQ1LjExLjA4NC4xNjMuMTI0LjAxLjQzOC41OC42OTQuODg2LjM3OC4xLS4xMDQuMTk2LS4yMTEuMjg2LS4zMjMuMzEzLS4zNjQuMDQ5LS44MDktLjQxOS0uODA5LS40NzQgMC0uNzQuNTA3LS40MzEuODQuNjI0LjY3MiAxLjI5IDEuMjM4IDIuMTEgMS42MzlhNy4zMDUgNy4zMDUgMCAwIDAgMi45MS43MjdjMS4wMyAwIDEuOTgtLjI1MSAyLjkxLS43MjdhNy4zMDcgNy4zMDcgMCAwIDAgMi4xMS0xLjY0Yy4zMS0uMzMxLjA0NC0uODM4LS40My0uODM4eiIvPjwvZz48L3N2Zz4=";
-      default:
-        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNDNEM0QzQiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTYgN2E5IDkgMCAxIDAgMCAxOCA5IDkgMCAwIDAgMC0xOHptMS40OTggMTMuMDc4aC0zdi0zLjA1OWgzdjMuMDZ6bTAtNC4zNzVoLTN2LTQuNzAzaDN2NC43MDN6Ii8+PC9nPjwvc3ZnPg==";
-    }
-  };
-
-  // Determine if user has enough balance
-  const hasEnoughBalance = () => {
-    const coin = coinData.find((c) => c.symbol === selectedCurrency);
-    return coin && parseFloat(ethAmount) <= coin.balance;
-  };
-
-  // Add error handling and retry logic for MetaMask connector
-  const handleConnectWallet = async (connector) => {
-    setSelectedWallet(connector.id);
-    setPendingConnector(connector.id);
-    try {
-      await connect({ connector });
-    } catch (error) {
-      console.error("Wallet connection error:", error);
-      // Add user-friendly error message
-      if (error.message?.includes("metamask")) {
-        // Check if MetaMask is installed
-        if (!window.ethereum) {
-          alert("Please install MetaMask to continue");
-          window.open("https://metamask.io/download.html", "_blank");
-        } else {
-          alert("Please unlock your MetaMask wallet and try again");
-        }
-      }
-    }
-  };
-
-  // Network change effect with proper cleanup
-  useEffect(() => {
-    const handleChainChanged = () => {
-      window.location.reload();
-    };
-
-    if (typeof window.ethereum !== "undefined") {
-      window.ethereum.on("chainChanged", handleChainChanged);
-    }
-
-    return () => {
-      if (typeof window.ethereum !== "undefined") {
-        window.ethereum.removeListener("chainChanged", handleChainChanged);
-      }
-    };
-  }, []);
 
   return (
     <div
@@ -488,15 +457,15 @@ export const PurchaseScreen = ({
               BSC
             </button>
             <button
-              className={`currency-tab ${activeTab === "SOL" ? "active" : ""}`}
-              onClick={() => setActiveTab("SOL")}
+              className={`currency-tab ${activeTab === "XDC" ? "active" : ""}`}
+              onClick={() => setActiveTab("XDC")}
             >
               <img
-                src={getCurrencyLogo("SOL")}
-                alt="SOL"
+                src={getCurrencyLogo("XDC")}
+                alt="XDC"
                 style={{ width: "16px", height: "16px", marginRight: "4px" }}
               />{" "}
-              SOL
+              XDC
             </button>
           </div>
 
@@ -505,7 +474,7 @@ export const PurchaseScreen = ({
               <div
                 key={coin.symbol}
                 className="currency-item"
-                onClick={() => handleNetworkCurrencySelect(coin.symbol)}
+                onClick={() => handleCurrencySelect(coin.symbol)}
               >
                 <div className="currency-icon-wrapper">
                   <img
@@ -634,20 +603,38 @@ export const PurchaseScreen = ({
                 lineHeight: "1.2",
               }}
             >
-              BUY $XDCAI PRESALE NOW!
+              BUY ${tokenSymbol} PRESALE NOW!
             </div>
           </div>
 
-          {/* Token display area */}
+          {/* Dynamic Price Display Area */}
           <div
             style={{
               width: "100%",
-              height: "110px",
+              padding: "15px",
               backgroundColor: "#3a4a4a",
               borderRadius: "10px",
               marginBottom: "20px",
+              textAlign: "center",
             }}
-          ></div>
+          >
+            <div
+              style={{
+                fontSize: "18px",
+                fontWeight: "bold",
+                marginBottom: "5px",
+              }}
+            >
+              Current Price:{" "}
+              {isLoadingPrice ? "Loading..." : formatTokenPrice(tokenPrice)}
+            </div>
+
+            <div style={{ fontSize: "14px", color: "#ddd" }}>
+              Next price increase in: {nextPriceIncrease.days}d{" "}
+              {nextPriceIncrease.hours}h {nextPriceIncrease.minutes}m{" "}
+              {nextPriceIncrease.seconds}s
+            </div>
+          </div>
 
           {/* Payment section */}
           <div style={{ padding: "0 5px" }}>
@@ -743,7 +730,7 @@ export const PurchaseScreen = ({
                   color: "#ccc",
                 }}
               >
-                Receive $XDCAI
+                Receive ${tokenSymbol}
               </p>
               <input
                 type="text"
@@ -771,7 +758,8 @@ export const PurchaseScreen = ({
                   color: "#aaa",
                 }}
               >
-                1 $XDCAI = ${xdcPrice.toFixed(7)}
+                1 ${tokenSymbol} ={" "}
+                {isLoadingPrice ? "Loading..." : formatTokenPrice(tokenPrice)}
               </p>
             </div>
 
@@ -789,14 +777,46 @@ export const PurchaseScreen = ({
             >
               {currentChainId &&
                 `Connected to ${
-                  currentChainId === mainnet.id
+                  currentChainId === 1
                     ? "Ethereum"
-                    : currentChainId === bsc.id
+                    : currentChainId === 56
                     ? "Binance Smart Chain"
-                    : currentChainId === optimism.id
-                    ? "Optimism"
+                    : currentChainId === 50
+                    ? "XDC Network"
+                    : currentChainId === 51
+                    ? "XDC Apothem Testnet"
                     : `Chain ID: ${currentChainId}`
                 }`}
+            </div>
+
+            {/* Bonus tokens info */}
+            <div
+              style={{
+                textAlign: "center",
+                color: "#aaa",
+                backgroundColor: "rgba(30, 30, 30, 0.7)",
+                padding: "10px",
+                borderRadius: "5px",
+                marginBottom: "15px",
+                fontSize: "14px",
+              }}
+            >
+              <p style={{ margin: 0, color: "#90EE90", fontWeight: "bold" }}>
+                Bonus Tokens
+              </p>
+              <p style={{ margin: "5px 0 0 0" }}>
+                2% bonus for purchases ≥ $1,000
+                <br />
+                4% bonus for purchases {">"} $2,000
+                <br />
+                10% bonus for purchases {">"} $5,000
+              </p>
+            </div>
+            <div className="bonus-display">
+              <p>
+                Current bonus:{" "}
+                {calculateBonus(ethAmount, coinPrices[selectedCurrency])}%
+              </p>
             </div>
 
             {/* Error message - displayed only if there's an error */}
@@ -816,7 +836,7 @@ export const PurchaseScreen = ({
             )}
 
             {/* Transaction status indicators */}
-            {isPending && (
+            {isProcessing && (
               <div
                 style={{
                   textAlign: "center",
@@ -831,23 +851,8 @@ export const PurchaseScreen = ({
               </div>
             )}
 
-            {isConfirming && (
-              <div
-                style={{
-                  textAlign: "center",
-                  color: "#90EE90",
-                  backgroundColor: "rgba(0, 100, 0, 0.2)",
-                  padding: "15px",
-                  borderRadius: "5px",
-                  marginBottom: "25px",
-                }}
-              >
-                Transaction confirmation in progress...
-              </div>
-            )}
-
             {/* Transaction hash display */}
-            {hash && (
+            {transactionHash && (
               <div
                 style={{
                   textAlign: "center",
@@ -861,30 +866,37 @@ export const PurchaseScreen = ({
                 <p style={{ color: "white", marginBottom: "5px" }}>
                   Transaction Hash:
                 </p>
-                <p style={{ color: "#90EE90", fontSize: "14px" }}>{hash}</p>
+                <p style={{ color: "#90EE90", fontSize: "14px" }}>
+                  {transactionHash}
+                </p>
               </div>
             )}
 
             {/* Buy button */}
             <button
-              onClick={handleEnhancedPurchase}
-              disabled={isPending || isConfirming}
+              onClick={handlePurchase}
+              disabled={isProcessing || isLoadingPrice}
               style={{
                 width: "100%",
                 backgroundColor:
-                  isPending || isConfirming ? "#5a8f5a" : "#90EE90",
+                  isProcessing || isLoadingPrice ? "#5a8f5a" : "#90EE90",
                 border: "none",
                 borderRadius: "8px",
                 padding: "17px",
                 fontSize: "20px",
                 fontWeight: "bold",
                 color: "black",
-                cursor: isPending || isConfirming ? "not-allowed" : "pointer",
+                cursor:
+                  isProcessing || isLoadingPrice ? "not-allowed" : "pointer",
                 marginBottom: "15px",
                 height: "60px",
               }}
             >
-              {isPending || isConfirming ? "PROCESSING..." : "BUY $XDCAI"}
+              {isProcessing
+                ? "PROCESSING..."
+                : isLoadingPrice
+                ? "LOADING..."
+                : `BUY ${tokenSymbol}`}
             </button>
           </div>
         </>
