@@ -128,7 +128,7 @@ export const ThankYouScreen = () => {
     if (!isMetaMaskInstalled && window.ethereum) {
       // Provider appeared - user might have connected a wallet
       setIsMetaMaskInstalled(true);
-      toast.success("Wallet connected! Now connect to XDC Network");
+      // toast.success("Wallet connected! Now connect to XDC Network");
       checkXdcConnection();
     }
 
@@ -200,7 +200,7 @@ export const ThankYouScreen = () => {
       );
     } catch (error) {
       console.error("XDC network connection error:", error);
-      setError("Failed to connect to XDC network. Please try again.");
+      // setError("Failed to connect to XDC network. Please try again.");
 
       // Show manual instructions if auto-switching failed
       if (error.code === 4902) {
@@ -353,7 +353,14 @@ export const ThankYouScreen = () => {
 
       if (receipt.status === 1) {
         toast.success("Tokens claimed successfully!");
-        navigate("/claim"); // Navigate to claim screen that shows vesting details
+
+        localStorage.removeItem("xdcai_tx_details");
+
+        setTimeout(() => {
+          navigate("/purchase");
+        }, 1000 * 3);
+
+        // navigate("/claim"); // Navigate to claim screen that shows vesting details
       } else {
         throw new Error("Transaction failed");
       }
@@ -369,7 +376,7 @@ export const ThankYouScreen = () => {
         toast.error(error.message || "Failed to claim tokens");
       }
 
-      setError(error.message || "Failed to claim tokens");
+      // setError(error.message || "Failed to claim tokens");
     } finally {
       setIsClaimingTokens(false);
     }

@@ -1,20 +1,15 @@
-//src/components/WalletOptions.jsx
-import React, { useEffect } from "react";
+// src/components/WalletOptions.jsx
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useConnect } from "wagmi";
 import { WalletOption } from "./WalletOption";
 
-export function WalletOptions({ setSelectedWallet, onError }) {
+export function WalletOptions({ setSelectedWallet, onError, walletDetectors }) {
+  const navigate = useNavigate();
   const { connectors, connect, isPending, error } = useConnect();
-  const [pendingConnector, setPendingConnector] = React.useState(null);
-  const [availableConnectors, setAvailableConnectors] = React.useState([]);
-  const [connectionAttempts, setConnectionAttempts] = React.useState(0);
-
-  // Define our specific wallets we want to show
-  const desiredWallets = [
-    { id: "metaMask", name: "Metamask" },
-    { id: "walletConnect", name: "WalletConnect" },
-    { id: "coinbaseWallet", name: "Coinbase Wallet" },
-  ];
+  const [pendingConnector, setPendingConnector] = useState(null);
+  const [availableConnectors, setAvailableConnectors] = useState([]);
+  const [connectionAttempts, setConnectionAttempts] = useState(0);
 
   // Manually create our wallet list based on available connectors
   useEffect(() => {
@@ -72,6 +67,17 @@ export function WalletOptions({ setSelectedWallet, onError }) {
     }
   }, [error, onError]);
 
+  // Handle successful connection
+  useEffect(() => {
+    if (!isPending && pendingConnector) {
+      console.log("Connection successful with", pendingConnector);
+
+      // If we've made it here, the connection should be established
+      // Navigate to the purchase page
+      navigate("/purchase");
+    }
+  }, [isPending, pendingConnector, navigate]);
+
   // Connection timeout handler
   const connectWithTimeout = async (connector) => {
     try {
@@ -107,12 +113,21 @@ export function WalletOptions({ setSelectedWallet, onError }) {
       setSelectedWallet(connector.id);
       setPendingConnector(connector.id);
 
-      // Check if MetaMask is installed for MetaMask connector
+      // Validate wallet availability based on connector type
       if (
         connector.id === "metaMask" &&
-        typeof window.ethereum === "undefined"
+        !walletDetectors.isMetaMaskInstalled()
       ) {
+        window.open("https://metamask.io/download/", "_blank");
         throw new Error("Please install MetaMask to continue");
+      }
+
+      if (
+        connector.id === "coinbaseWallet" &&
+        !walletDetectors.isCoinbaseInstalled()
+      ) {
+        window.open("https://www.coinbase.com/wallet/downloads", "_blank");
+        throw new Error("Please install Coinbase Wallet to continue");
       }
 
       // Attempt connection with timeout
@@ -197,7 +212,7 @@ export function WalletOptions({ setSelectedWallet, onError }) {
         {availableConnectors.length > 0 ? (
           availableConnectors.map((connector) => (
             <WalletOption
-              key={connector.uid}
+              key={connector.uid || connector.id}
               connector={connector}
               onClick={() => handleConnectWallet(connector)}
               selectedWallet={pendingConnector}
@@ -250,3 +265,5 @@ export function WalletOptions({ setSelectedWallet, onError }) {
     </div>
   );
 }
+
+export default WalletOptions;

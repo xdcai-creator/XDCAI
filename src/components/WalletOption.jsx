@@ -66,26 +66,44 @@ export function WalletOption({
 
   useEffect(() => {
     // Check if the connector is ready (provider available)
-    (async () => {
+    const checkConnectorReady = async () => {
       try {
+        if (connector.id === "walletConnect") {
+          // WalletConnect is always considered ready
+          setReady(true);
+          return;
+        }
+
+        // For other connectors, check provider
         const provider = await connector.getProvider();
         setReady(!!provider);
       } catch (error) {
         console.error(`Error checking connector ${connector.id}:`, error);
-        setReady(false);
-      }
-    })();
-  }, [connector]);
 
-  // Debug logging for connector properties
-  console.log(`Wallet option: ${connector.id}`, {
-    id: connector.id,
-    name: connector.name,
-    ready: ready,
-  });
+        // Consider WalletConnect and Coinbase always "ready" as they can be opened in another app
+        if (
+          connector.id === "walletConnect" ||
+          connector.id === "coinbaseWallet"
+        ) {
+          setReady(true);
+        } else {
+          setReady(false);
+        }
+      }
+    };
+
+    checkConnectorReady();
+  }, [connector]);
 
   // Is this the currently selected wallet?
   const isSelected = selectedWallet === connector.id;
+
+  // Default all connectors to ready=true in this scenario
+  // This ensures all wallet options are clickable
+  const isReady =
+    connector.id === "walletConnect" || connector.id === "coinbaseWallet"
+      ? true
+      : ready;
 
   return (
     <button
@@ -100,19 +118,35 @@ export function WalletOption({
         color: "white",
         fontSize: "18px",
         fontWeight: "500",
-        cursor: "pointer",
+        cursor: isPending ? "not-allowed" : "pointer",
         transition: "background-color 0.2s, border-color 0.2s",
-        opacity: !ready || isPending ? 0.6 : 1,
+        opacity: isPending ? 0.6 : 1,
         width: "100%",
         marginBottom: "10px",
       }}
-      disabled={!ready || isPending}
+      disabled={isPending}
       onClick={onClick}
     >
       <span>{getDisplayName(connector)}</span>
-      <div style={{ width: "30px", height: "30px" }}>
-        {getIconForConnector(connector)}
-      </div>
+      {isPending ? (
+        <div
+          className="spinner"
+          style={{
+            width: "20px",
+            height: "20px",
+            borderRadius: "50%",
+            border: "2px solid #00FA73",
+            borderTopColor: "transparent",
+            animation: "spin 1s linear infinite",
+          }}
+        />
+      ) : (
+        <div style={{ width: "30px", height: "30px" }}>
+          {getIconForConnector(connector)}
+        </div>
+      )}
     </button>
   );
 }
+
+export default WalletOption;

@@ -1,4 +1,4 @@
-// File: frontend/src/components/config.js
+// src/components/config.js
 import { http, createConfig } from "wagmi";
 import { mainnet, bsc } from "wagmi/chains";
 import {
@@ -68,8 +68,8 @@ export const xdcTestnet = {
 export const config = createConfig({
   chains: [mainnet, bsc, xdcNetwork, xdcTestnet],
   connectors: [
-    metaMask(),
-    walletConnect({ projectId }),
+    metaMask({ projectId }),
+    walletConnect({ projectId, showQrModal: true }),
     coinbaseWallet({ appName: "XDCAI Presale" }),
   ],
   transports: {
@@ -80,7 +80,55 @@ export const config = createConfig({
   },
 });
 
-// Function to add XDC Network to user's wallet
+// Fixed switchToXdcNetwork function for proper XDC Network switching
+
+export const switchToXdcNetwork = async (testnet = false) => {
+  if (!window.ethereum) {
+    throw new Error("MetaMask is not installed");
+  }
+
+  try {
+    // XDC chainIds in decimal
+    const testnetChainIdDecimal = 51;
+    const mainnetChainIdDecimal = 50;
+
+    // Convert to hex string with 0x prefix - ensure proper format
+    const chainId = testnet
+      ? `0x${testnetChainIdDecimal.toString(16)}` // "0x33" for testnet
+      : `0x${mainnetChainIdDecimal.toString(16)}`; // "0x32" for mainnet
+
+    console.log("Attempting to switch to chainId:", chainId);
+
+    try {
+      // First try to switch to the network
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId }],
+      });
+
+      console.log("Successfully switched to XDC network");
+      return true;
+    } catch (switchError) {
+      // This error code indicates that the chain has not been added to MetaMask
+      if (
+        switchError.code === 4902 ||
+        // Some providers give different error codes
+        switchError.message.includes("wallet_addEthereumChain") ||
+        switchError.message.includes("Unrecognized chain")
+      ) {
+        console.log("Network not found, attempting to add it...");
+        return await addXdcNetworkToWallet(testnet);
+      } else {
+        throw switchError;
+      }
+    }
+  } catch (error) {
+    console.error("Error switching to XDC network:", error);
+    throw error;
+  }
+};
+
+// Improved function to add XDC network to wallet
 export const addXdcNetworkToWallet = async (testnet = false) => {
   if (!window.ethereum) {
     throw new Error("MetaMask is not installed");
@@ -110,43 +158,18 @@ export const addXdcNetworkToWallet = async (testnet = false) => {
         blockExplorerUrls: ["https://explorer.xinfin.network"],
       };
 
+  console.log("Adding network with params:", networkParams);
+
   try {
     await window.ethereum.request({
       method: "wallet_addEthereumChain",
       params: [networkParams],
     });
 
+    console.log("Successfully added XDC network");
     return true;
   } catch (error) {
     console.error("Error adding XDC network:", error);
-    throw error;
-  }
-};
-
-// Function to switch to XDC Network
-export const switchToXdcNetwork = async (testnet = false) => {
-  if (!window.ethereum) {
-    throw new Error("MetaMask is not installed");
-  }
-
-  const chainId = testnet
-    ? `0x${(51).toString(16)}` // "0x33" for testnet
-    : `0x${(50).toString(16)}`; // "0x32" for mainnet
-
-  try {
-    await window.ethereum.request({
-      method: "wallet_switchEthereumChain",
-      params: [{ chainId }],
-    });
-
-    return true;
-  } catch (error) {
-    // This error code indicates that the chain has not been added to MetaMask
-    if (error.code === 4902) {
-      return addXdcNetworkToWallet(testnet);
-    }
-
-    console.error("Error switching to XDC network:", error);
     throw error;
   }
 };

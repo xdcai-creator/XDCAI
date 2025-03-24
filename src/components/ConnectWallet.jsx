@@ -15,58 +15,36 @@ export function ConnectWallet({ setAccount, onTestSolanaConnect }) {
   const [showTest, setShowTest] = useState(false);
   const [error, setError] = useState(null);
 
-  // Check if MetaMask is installed
-  const checkMetaMaskInstalled = () => {
-    if (typeof window !== "undefined") {
-      return Boolean(window.ethereum?.isMetaMask);
-    }
-    return false;
-  };
-
-  // Initialize MetaMask provider
-  const initializeMetaMask = async () => {
-    try {
-      if (!checkMetaMaskInstalled()) {
-        throw new Error("MetaMask not installed");
+  // Define wallet detector functions
+  const walletDetectors = {
+    isMetaMaskInstalled: () => {
+      if (typeof window !== "undefined") {
+        return Boolean(window.ethereum?.isMetaMask);
       }
-
-      // Request account access
-      await window.ethereum.request({
-        method: "eth_requestAccounts",
-        params: [],
-      });
-
-      // Add network change listener
-      window.ethereum.on("chainChanged", (chainId) => {
-        // Handle chain change - refresh page
-        window.location.reload();
-      });
-
-      // Add account change listener
-      window.ethereum.on("accountsChanged", (accounts) => {
-        if (accounts.length === 0) {
-          navigate("/connect");
-        }
-      });
-    } catch (error) {
-      console.error("MetaMask initialization error:", error);
-      setError(error.message);
       return false;
-    }
-    return true;
+    },
+    isPhantomInstalled: () => {
+      if (typeof window !== "undefined") {
+        return Boolean(window.solana?.isPhantom);
+      }
+      return false;
+    },
+    isCoinbaseInstalled: () => {
+      if (typeof window !== "undefined") {
+        return Boolean(window.ethereum?.isCoinbaseWallet);
+      }
+      return false;
+    },
+    isWalletConnectAvailable: () => true, // WalletConnect is always available as it's a QR code based solution
   };
 
   // Update the app's account state when the wallet is connected
   useEffect(() => {
     if (isConnected && address) {
-      // Initialize MetaMask if it's the selected wallet
-      if (selectedWallet === "metaMask") {
-        initializeMetaMask();
-      }
       // Automatically proceed to purchase screen when connected
       navigate("/purchase");
     }
-  }, [isConnected, address, selectedWallet, navigate]);
+  }, [isConnected, address, navigate]);
 
   // Handle test Solana wallet connection
   const handleTestSolanaConnect = async () => {
@@ -138,6 +116,7 @@ export function ConnectWallet({ setAccount, onTestSolanaConnect }) {
         setSelectedWallet={setSelectedWallet}
         onTestSolanaConnect={handleTestSolanaConnect}
         onError={setError}
+        walletDetectors={walletDetectors}
       />
       {error && (
         <div
