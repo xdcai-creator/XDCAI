@@ -1,5 +1,7 @@
+// src/hooks/useContract.js
 import { useState, useEffect } from "react";
-import { ethers } from "ethers";
+import { ethers } from "ethers"; // Using v5.7.2 as specified in package.json
+import { useAccount } from "wagmi";
 import { CONTRACT_ADDRESSES, NETWORKS } from "../contracts/contractAddresses";
 import { XDCAIPresale2_ABI, XDCAIToken_ABI } from "../contracts/abis";
 
@@ -12,9 +14,16 @@ export const useContract = (contractName) => {
   const [contract, setContract] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { isConnected } = useAccount();
 
   useEffect(() => {
     const initContract = async () => {
+      if (!isConnected) {
+        setContract(null);
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
@@ -24,14 +33,18 @@ export const useContract = (contractName) => {
           throw new Error("Please install MetaMask or another Ethereum wallet");
         }
 
-        // Create a provider and get the current chain ID - ethers v5 style
+        // Create a provider and get the current chain ID
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const network = await provider.getNetwork();
         const chainId = network.chainId;
 
         // Get contract address for current network
-        const address = CONTRACT_ADDRESSES[chainId.toString()][contractName];
+        const contractAddresses = CONTRACT_ADDRESSES[chainId.toString()];
+        if (!contractAddresses) {
+          throw new Error(`Unsupported network: ${chainId}`);
+        }
 
+        const address = contractAddresses[contractName];
         if (
           !address ||
           address === "0x0000000000000000000000000000000000000000"
@@ -54,7 +67,7 @@ export const useContract = (contractName) => {
             throw new Error(`Unknown contract name: ${contractName}`);
         }
 
-        // Create and return contract instance - ethers v5 style
+        // Create and return contract instance
         const signer = provider.getSigner();
         const contractInstance = new ethers.Contract(address, abi, signer);
         setContract(contractInstance);
@@ -70,19 +83,30 @@ export const useContract = (contractName) => {
 
     // Listen for chain changes and reinitialize the contract
     const handleChainChanged = () => {
-      window.location.reload();
+      initContract();
+    };
+
+    const handleAccountsChanged = () => {
+      initContract();
     };
 
     if (window.ethereum) {
       window.ethereum.on("chainChanged", handleChainChanged);
+      window.ethereum.on("accountsChanged", handleAccountsChanged);
     }
 
     return () => {
       if (window.ethereum) {
         window.ethereum.removeListener("chainChanged", handleChainChanged);
+        window.ethereum.removeListener(
+          "accountsChanged",
+          handleAccountsChanged
+        );
       }
     };
-  }, [contractName]);
+  }, [contractName, isConnected]);
 
   return { contract, loading, error };
 };
+
+export default useContract;
