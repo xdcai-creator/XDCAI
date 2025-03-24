@@ -103,6 +103,10 @@ export const ThankYouScreen = () => {
           if (data.email) {
             setUserEmail(data.email);
             setEmailSubmitted(true);
+
+            //to trigger purchase email
+            let showEmailToast = false;
+            storeEmailApi(data.email, showEmailToast);
           } else {
             setEmailSubmitted(false);
           }
@@ -240,7 +244,7 @@ export const ThankYouScreen = () => {
   };
 
   // API call to store email
-  const storeEmailApi = async (_emailInput) => {
+  const storeEmailApi = async (_emailInput, showEmailToast = true) => {
     try {
       setIsSubmittingEmail(true);
       setError(null);
@@ -285,10 +289,14 @@ export const ThankYouScreen = () => {
       }
 
       setEmailSubmitted(true);
-      toast.success("Email submitted successfully!");
+      if (showEmailToast) {
+        toast.success("Email submitted successfully!");
+      }
     } catch (err) {
       console.error("Email submission error:", err);
-      toast.error(err.message || "Failed to submit email");
+      if (showEmailToast) {
+        toast.error(err.message || "Failed to submit email");
+      }
       throw err;
     } finally {
       setIsSubmittingEmail(false);
