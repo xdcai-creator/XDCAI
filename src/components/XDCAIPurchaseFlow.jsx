@@ -72,14 +72,14 @@ const XDCAIPurchaseFlow = () => {
             />
 
             {/* Claim tokens route */}
-            <Route
+            {/* <Route
               path="/claim"
               element={
                 <ProtectedRoute>
                   <ClaimScreen />
                 </ProtectedRoute>
               }
-            />
+            /> */}
 
             {/* Fallback for invalid routes */}
             <Route path="*" element={<Navigate to="/" replace />} />

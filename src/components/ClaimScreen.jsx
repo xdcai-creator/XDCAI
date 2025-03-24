@@ -205,8 +205,8 @@ export const ClaimScreen = () => {
 
   return (
     <div
-      className="claim-screen"
-      style={{ maxWidth: "600px", margin: "0 auto", padding: "20px 0" }}
+      className="claim-screen p-8"
+      // style={{ maxWidth: "600px", margin: "0 auto", padding: "20px 0" }}
     >
       <h2
         style={{ textAlign: "center", fontSize: "28px", margin: "0 0 20px 0" }}
