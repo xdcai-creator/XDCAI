@@ -46,7 +46,7 @@ export function Account({ setCurrentScreen }) {
         style={{
           padding: "15px 20px",
           backgroundColor: "#112211",
-          border: "1px solid #90EE90",
+          border: "1px solid #00FA73",
           borderRadius: "10px",
           color: "white",
           fontSize: "16px",
@@ -76,7 +76,7 @@ export function Account({ setCurrentScreen }) {
         <button
           style={{
             padding: "15px 20px",
-            backgroundColor: "#90EE90",
+            backgroundColor: "#00FA73",
             border: "none",
             borderRadius: "10px",
             color: "black",

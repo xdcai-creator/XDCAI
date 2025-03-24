@@ -41,7 +41,7 @@ const SUPPORTED_TOKENS = {
     isNative: false,
     address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
   },
-  WSOL: {
+  SOL: {
     id: "solana",
     isNative: false,
     address: "0x4e3Decbb3645551B8A19f0eA1678079FCB33fB4c",
@@ -275,13 +275,14 @@ export const checkPriceDiscrepancies = async (provider, threshold = 5) => {
  * @param {string} amount - Amount of tokens to purchase with
  * @returns {Promise<Object>} - Price quote information
  */
-export const getPrepurchaseQuote = async (symbol, amount) => {
+export const getPrepurchaseQuote = async ({ symbol, amount, xdcaiPrice }) => {
   try {
     // Fetch latest prices
     const prices = await fetchCurrentPrices();
 
     // Get price for the token
     const tokenPrice = prices[symbol];
+    console.log(`symbol ${symbol} price ${tokenPrice}`);
     if (!tokenPrice) {
       throw new Error(`Price not available for ${symbol}`);
     }
@@ -296,7 +297,7 @@ export const getPrepurchaseQuote = async (symbol, amount) => {
 
     // Calculate XDCAI tokens to receive
     // Assuming $0.0004 per XDCAI token
-    const xdcaiPrice = 0.0004;
+    // const xdcaiPrice = 0.0004;
     const xdcaiAmount = usdValue / xdcaiPrice;
 
     // Calculate bonus based on USD value
@@ -310,7 +311,7 @@ export const getPrepurchaseQuote = async (symbol, amount) => {
     }
 
     const bonusTokens = (xdcaiAmount * bonusPercent) / 100;
-    const totalTokens = xdcaiAmount + bonusTokens;
+    const totalTokens = xdcaiAmount; // + bonusTokens;
 
     return {
       inputToken: symbol,

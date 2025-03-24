@@ -35,7 +35,7 @@
 .presale-cta {
   font-size: 28px;
   font-weight: bold;
-  color: #90EE90;
+  color: #00FA73;
   margin: 30px 0;
 }
 
@@ -46,7 +46,7 @@
 }
 
 .btn-primary {
-  background-color: #90EE90;
+  background-color: #00FA73;
   color: #000;
   border: none;
   padding: 12px 20px;
@@ -212,9 +212,9 @@
 }
 
 .currency-tab.active {
-  background-color: #90EE90;
+  background-color: #00FA73;
   color: black;
-  border-color: #90EE90;
+  border-color: #00FA73;
 }
 
 .currency-list {
@@ -420,7 +420,7 @@
 .buy-button {
   width: 100%;
   padding: 16px;
-  background-color: #90EE90;
+  background-color: #00FA73;
   color: black;
   border: none;
   border-radius: 10px;
@@ -450,7 +450,7 @@
 }
 
 .step-number {
-  color: #90EE90;
+  color: #00FA73;
   font-weight: bold;
   margin-bottom: 10px;
 }
@@ -477,7 +477,7 @@
 .claim-button {
   width: 100%;
   padding: 15px;
-  background-color: #90EE90;
+  background-color: #00FA73;
   color: black;
   border: none;
   border-radius: 8px;
@@ -550,7 +550,7 @@
 
 .xdc-network-details h3 {
   margin-top: 0;
-  color: #90EE90;
+  color: #00FA73;
   font-size: 1.2em;
 }
 
@@ -565,7 +565,7 @@
 }
 
 .network-info strong {
-  color: #90EE90;
+  color: #00FA73;
   margin-right: 8px;
 }
 

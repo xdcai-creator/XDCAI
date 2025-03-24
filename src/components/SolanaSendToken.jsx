@@ -174,7 +174,7 @@ export function SolanaSendToken() {
                   width: "32px",
                   height: "32px",
                   borderRadius: "50%",
-                  backgroundColor: "#90EE90",
+                  backgroundColor: "#00FA73",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -203,7 +203,7 @@ export function SolanaSendToken() {
                 <div
                   style={{
                     fontSize: "14px",
-                    color: wallet.publicKey ? "#90EE90" : "#ff4c4c",
+                    color: wallet.publicKey ? "#00FA73" : "#ff4c4c",
                   }}
                 >
                   {wallet.publicKey ? "Connected" : "Not Connected"}
@@ -238,7 +238,7 @@ export function SolanaSendToken() {
             <div
               style={{
                 textAlign: "center",
-                color: "#90EE90",
+                color: "#00FA73",
                 fontSize: "38px",
                 fontWeight: "bold",
                 margin: "25px 0",
@@ -422,7 +422,7 @@ export function SolanaSendToken() {
               <div
                 style={{
                   textAlign: "center",
-                  color: "#90EE90",
+                  color: "#00FA73",
                   backgroundColor: "rgba(0, 100, 0, 0.2)",
                   padding: "15px",
                   borderRadius: "5px",
@@ -439,7 +439,7 @@ export function SolanaSendToken() {
               disabled={isProcessing || !wallet.publicKey}
               style={{
                 width: "100%",
-                backgroundColor: isProcessing ? "#5a8f5a" : "#90EE90",
+                backgroundColor: isProcessing ? "#5a8f5a" : "#00FA73",
                 border: "none",
                 borderRadius: "8px",
                 padding: "17px",

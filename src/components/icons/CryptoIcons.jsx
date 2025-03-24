@@ -1,234 +1,340 @@
 // src/components/icons/CryptoIcons.jsx
 import React from "react";
 
-export const EthereumIcon = () => (
+export const EthereumIcon = (props) => (
   <svg
-    width="32"
-    height="32"
-    viewBox="0 0 32 32"
-    fill="none"
     xmlns="http://www.w3.org/2000/svg"
+    xmlnsXlink="http://www.w3.org/1999/xlink"
+    width="37.82"
+    height="37.82"
+    viewBox="0 0 37.82 37.82"
   >
-    <circle cx="16" cy="16" r="16" fill="#627EEA" />
-    <path d="M16.498 4v9.103L8 5V16.498z" fill="white" fillOpacity="0.602" />
-    <path d="M16.498 4L25 16.498L16.498 13.103V4z" fill="white" />
+    <defs>
+      <clipPath id="clip-path">
+        <rect
+          id="Rectangle_814"
+          data-name="Rectangle 814"
+          width="37.82"
+          height="37.82"
+          fill="#425152"
+        />
+      </clipPath>
+      <clipPath id="clip-path-2">
+        <rect
+          id="Rectangle_818"
+          data-name="Rectangle 818"
+          width="14.976"
+          height="14.976"
+          fill="#425152"
+        />
+      </clipPath>
+    </defs>
+    <g id="Group_842" data-name="Group 842" transform="translate(-2809 -545)">
+      <g id="Group_843" data-name="Group 843">
+        <g
+          id="Mask_Group_26"
+          data-name="Mask Group 26"
+          transform="translate(2809 545)"
+          clipPath="url(#clip-path)"
+        >
+          <g id="Layer_2" data-name="Layer 2">
+            <g id="Flat_Color" data-name="Flat Color">
+              <g id="Ethereum_ETH_" data-name="Ethereum (ETH)">
+                <circle
+                  id="Ellipse_23"
+                  data-name="Ellipse 23"
+                  cx="15.91"
+                  cy="15.91"
+                  r="15.91"
+                  fill="#5f7edd"
+                />
+                <path
+                  id="Path_754"
+                  data-name="Path 754"
+                  d="M11.985,13.9,6.639,10.739l5.346,7.535,5.35-7.535Z"
+                  transform="translate(3.924 6.347)"
+                  fill="#fff"
+                />
+                <path
+                  id="Path_755"
+                  data-name="Path 755"
+                  d="M17.333,13.4l-5.347,3.16L6.638,13.4l5.347-8.873Z"
+                  transform="translate(3.923 2.674)"
+                  fill="#fff"
+                />
+                <g
+                  id="Group_731"
+                  data-name="Group 731"
+                  transform="translate(10.563 7.199)"
+                >
+                  <path
+                    id="Path_756"
+                    data-name="Path 756"
+                    d="M15.346,13.4,10,10.967V4.525Z"
+                    transform="translate(-4.653 -4.525)"
+                    fill="#c1ccf7"
+                  />
+                  <path
+                    id="Path_757"
+                    data-name="Path 757"
+                    d="M15.349,10.739,10,18.274V13.9Z"
+                    transform="translate(-4.653 -0.853)"
+                    fill="#c1ccf7"
+                  />
+                  <path
+                    id="Path_758"
+                    data-name="Path 758"
+                    d="M11.985,8.574v5.591l-5.346-3.16Z"
+                    transform="translate(-6.639 -2.132)"
+                    fill="#c1ccf7"
+                  />
+                </g>
+                <path
+                  id="Path_759"
+                  data-name="Path 759"
+                  d="M15.346,11.005,10,14.165V8.574Z"
+                  transform="translate(5.909 5.067)"
+                  fill="#8198ee"
+                />
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+      <g
+        id="Group_749"
+        data-name="Group 749"
+        transform="translate(2827.099 561.822)"
+      >
+        <rect
+          id="Rectangle_819"
+          data-name="Rectangle 819"
+          width="16.835"
+          height="16.835"
+          rx="8.417"
+          transform="translate(0 0)"
+          fill="#fff"
+        />
+        <g
+          id="Mask_Group_30"
+          data-name="Mask Group 30"
+          transform="translate(0.93 0.93)"
+          clipPath="url(#clip-path-2)"
+        >
+          <g id="Layer_2-2" data-name="Layer 2">
+            <g id="Flat_Color-2" data-name="Flat Color">
+              <g id="Ethereum_ETH_2" data-name="Ethereum (ETH)">
+                <circle
+                  id="Ellipse_24"
+                  data-name="Ellipse 24"
+                  cx="7.488"
+                  cy="7.488"
+                  r="7.488"
+                  fill="#5f7edd"
+                />
+                <path
+                  id="Path_760"
+                  data-name="Path 760"
+                  d="M9.155,12.225,6.639,10.739l2.516,3.546,2.518-3.546Z"
+                  transform="translate(-1.668 -2.698)"
+                  fill="#fff"
+                />
+                <path
+                  id="Path_761"
+                  data-name="Path 761"
+                  d="M11.671,8.7,9.155,10.188,6.638,8.7,9.155,4.525Z"
+                  transform="translate(-1.668 -1.137)"
+                  fill="#fff"
+                />
+                <g
+                  id="Group_748"
+                  data-name="Group 748"
+                  transform="translate(4.971 3.388)"
+                >
+                  <path
+                    id="Path_762"
+                    data-name="Path 762"
+                    d="M12.516,8.7,10,7.557V4.525Z"
+                    transform="translate(-7.483 -4.525)"
+                    fill="#c1ccf7"
+                  />
+                  <path
+                    id="Path_763"
+                    data-name="Path 763"
+                    d="M12.517,10.739,10,14.285v-2.06Z"
+                    transform="translate(-7.483 -6.086)"
+                    fill="#c1ccf7"
+                  />
+                  <path
+                    id="Path_764"
+                    data-name="Path 764"
+                    d="M9.155,8.574v2.631L6.639,9.718Z"
+                    transform="translate(-6.639 -5.542)"
+                    fill="#c1ccf7"
+                  />
+                </g>
+                <path
+                  id="Path_765"
+                  data-name="Path 765"
+                  d="M12.516,9.718,10,11.205V8.574Z"
+                  transform="translate(-2.512 -2.154)"
+                  fill="#8198ee"
+                />
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+    </g>
+  </svg>
+);
+
+export const BinanceIcon = (props) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    xmlSpace="preserve"
+    style={{
+      enableBackground: "new 0 0 2496 2496",
+    }}
+    viewBox="0 0 2496 2496"
+    width="1em"
+    height="1em"
+    // {...props}
+  >
     <path
-      d="M16.498 21.976v6.021L8 16l16.498 8.25v-2.274L16.498 21.976z"
-      fill="white"
-      fillOpacity="0.602"
+      d="M1248 0c689.3 0 1248 558.7 1248 1248s-558.7 1248-1248 1248S0 1937.3 0 1248 558.7 0 1248 0z"
+      style={{
+        fillRule: "evenodd",
+        clipRule: "evenodd",
+        fill: "#f0b90b",
+      }}
     />
-    <path d="M16.498 27.995V21.976L25 16L16.498 27.995z" fill="white" />
     <path
-      d="M16.498 20.573L24.895 16.19L16.498 13.104v7.47z"
-      fill="white"
-      fillOpacity="0.2"
+      d="m685.9 1248 .9 330 280.4 165v193.2l-444.5-260.7v-524l163.2 96.5zm0-330v192.3l-163.3-96.6V821.4l163.3-96.6L850 821.4 685.9 918zm398.4-96.6 163.3-96.6 164.1 96.6-164.1 96.6-163.3-96.6z"
+      style={{
+        fill: "#fff",
+      }}
     />
     <path
-      d="M8 16.19l8.498 7.47V13.1L8 16.19z"
-      fill="white"
-      fillOpacity="0.602"
+      d="M803.9 1509.6v-193.2l163.3 96.6v192.3l-163.3-95.7zm280.4 302.6 163.3 96.6 164.1-96.6v192.3l-164.1 96.6-163.3-96.6v-192.3zm561.6-990.8 163.3-96.6 164.1 96.6v192.3l-164.1 96.6V918l-163.3-96.6zm163.3 756.6.9-330 163.3-96.6v524l-444.5 260.7v-193.2l280.3-164.9z"
+      style={{
+        fill: "#fff",
+      }}
+    />
+    <path
+      d="m1692.1 1509.6-163.3 95.7V1413l163.3-96.6v193.2z"
+      style={{
+        fill: "#fff",
+      }}
+    />
+    <path
+      d="m1692.1 986.4.9 193.2-281.2 165v330.8l-163.3 95.7-163.3-95.7v-330.8l-281.2-165V986.4l164-96.6 279.5 165.8 281.2-165.8 164.1 96.6h-.7zM803.9 656.5l443.7-261.6 444.5 261.6-163.3 96.6-281.2-165.8-280.4 165.8-163.3-96.6z"
+      style={{
+        fill: "#fff",
+      }}
     />
   </svg>
 );
 
-export const BinanceIcon = () => (
+export const SolanaIcon = (props) => (
   <svg
-    width="32"
-    height="32"
-    viewBox="0 0 32 32"
-    fill="none"
     xmlns="http://www.w3.org/2000/svg"
+    xmlSpace="preserve"
+    style={{
+      enableBackground: "new 0 0 397.7 311.7",
+    }}
+    viewBox="0 0 397.7 311.7"
+    width="1em"
+    height="1em"
   >
-    <circle cx="16" cy="16" r="16" fill="#F3BA2F" />
+    <linearGradient
+      id="a"
+      x1={360.879}
+      x2={141.213}
+      y1={351.455}
+      y2={-69.294}
+      gradientTransform="matrix(1 0 0 -1 0 314)"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop
+        offset={0}
+        style={{
+          stopColor: "#00ffa3",
+        }}
+      />
+      <stop
+        offset={1}
+        style={{
+          stopColor: "#dc1fff",
+        }}
+      />
+    </linearGradient>
     <path
-      d="M12.116 14.404L16 10.52l3.886 3.886 2.26 2.26L16 22.784l-6.144-6.144 1.144-1.144 1.116-1.092zM9.076 16.464l1.144-1.14 5.78 5.778-5.78 5.78-1.144-1.144L13.708 21l-4.632-4.536zm13.848 0l-1.144 1.144L17.148 21l4.632 4.636 1.144-1.144-5.78-5.78 5.78-5.778zM16 8L8 16l1.144 1.144L16 10.288l6.856 6.856L24 16l-8-8z"
-      fill="white"
+      d="M64.6 237.9c2.4-2.4 5.7-3.8 9.2-3.8h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1l62.7-62.7z"
+      style={{
+        fill: "url(#a)",
+      }}
+    />
+    <linearGradient
+      id="b"
+      x1={264.829}
+      x2={45.163}
+      y1={401.601}
+      y2={-19.148}
+      gradientTransform="matrix(1 0 0 -1 0 314)"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop
+        offset={0}
+        style={{
+          stopColor: "#00ffa3",
+        }}
+      />
+      <stop
+        offset={1}
+        style={{
+          stopColor: "#dc1fff",
+        }}
+      />
+    </linearGradient>
+    <path
+      d="M64.6 3.8C67.1 1.4 70.4 0 73.8 0h317.4c5.8 0 8.7 7 4.6 11.1l-62.7 62.7c-2.4 2.4-5.7 3.8-9.2 3.8H6.5c-5.8 0-8.7-7-4.6-11.1L64.6 3.8z"
+      style={{
+        fill: "url(#b)",
+      }}
+    />
+    <linearGradient
+      id="c"
+      x1={312.548}
+      x2={92.882}
+      y1={376.688}
+      y2={-44.061}
+      gradientTransform="matrix(1 0 0 -1 0 314)"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop
+        offset={0}
+        style={{
+          stopColor: "#00ffa3",
+        }}
+      />
+      <stop
+        offset={1}
+        style={{
+          stopColor: "#dc1fff",
+        }}
+      />
+    </linearGradient>
+    <path
+      d="M333.1 120.1c-2.4-2.4-5.7-3.8-9.2-3.8H6.5c-5.8 0-8.7 7-4.6 11.1l62.7 62.7c2.4 2.4 5.7 3.8 9.2 3.8h317.4c5.8 0 8.7-7 4.6-11.1l-62.7-62.7z"
+      style={{
+        fill: "url(#c)",
+      }}
     />
   </svg>
 );
 
-export const SolanaIcon = () => (
-  <svg
-    width="32"
-    height="32"
-    viewBox="0 0 32 32"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <circle cx="16" cy="16" r="16" fill="#680A4" />
-    <path
-      d="M9.94 20.188c1.235 0 4.41 0 5.529 0a.41.41 0 100-.821h-5.53a.41.41 0 010-.821h6.352a.41.41 0 000-.822H10.76a.41.41 0 010-.821h4.705c1.235 0 2.876-1.233 3.694-2.05l.207-.208c.229-.228.6-6.412.6-8.038M22.058 12.635h-5.53a.41.41 0 010-.822h6.352a.41.41 0 000-.822H16.29a.41.41 0 010-.821h4.704c1.236 0 2.877-1.232 3.695-2.05"
-      fill="white"
-    />
-    <path
-      d="M22.058 19.366a.41.41 0 010 .822h-5.53a.41.41 0 000 .821h6.352a.41.41 0 010 .822H16.29a.41.41 0 000 .821h4.704c1.236 0 2.877 1.233 3.695 2.05l.207.207c.229.229.6 6.413.6 8.038"
-      fill="white"
-    />
-    <path
-      d="M9.94 23.511h5.529a.41.41 0 010 .822h-6.352a.41.41 0 000 .821h5.589a.41.41 0 010 .821H9.94c-1.236 0-2.877 1.233-3.694 2.05"
-      fill="white"
-    />
-  </svg>
-);
-
-export const USDTIcon = () => (
-  <svg
-    width="32"
-    height="32"
-    viewBox="0 0 32 32"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <circle cx="16" cy="16" r="16" fill="#26A17B" />
-    <path
-      d="M17.922 17.383v-.002c-.11.008-.677.042-1.942.042-1.01 0-1.721-.03-1.971-.042v.003c-3.888-.171-6.79-.848-6.79-1.658 0-.809 2.902-1.486 6.79-1.66v-2.12c1.26.013 1.97.044 1.98.044l.003-.002c.01 0 .717-.031 1.961-.044v2.122c3.888.173 6.79.85 6.79 1.659 0 .81-2.902 1.486-6.79 1.657m0-3.966v-.001c-.129.01-.724.044-1.942.044-1.018 0-1.765-.03-1.971-.043v.001c-4.914-.171-8.58-.98-8.58-1.855s3.666-1.684 8.58-1.856v.001c1.245.02 1.988.047 1.988.047.011 0 .717-.03 1.944-.048v-.001c4.915.172 8.58.98 8.58 1.856s-3.665 1.684-8.58 1.855m-1.951 5.274v3.572c-.001 0-.71.037-1.963.037-1.025 0-1.734-.03-1.988-.037v-3.572c.254.008.962.037 1.988.037 1.251 0 1.96-.037 1.963-.037"
-      fill="white"
-    />
-  </svg>
-);
-
-export const USDCIcon = () => (
-  <svg
-    width="32"
-    height="32"
-    viewBox="0 0 32 32"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <circle cx="16" cy="16" r="16" fill="#2C75CA" />
-    <path d="M15.991 26C11.03 26 6.998 21.97 6.998 17.011c0-4.958 4.033-8.99 8.993-8.99 4.958 0 8.991 4.033 8.991 8.99 0 4.959-4.033 8.989-8.99 8.989zm4.445-5.303a.713.713 0 00-.712.71.713.713 0 001.424.001.71.71 0 00-.712-.711zm0-2.85a.794.794 0 00.791-.791.796.796 0 00-.791-.793.795.795 0 00-.792.793.794.794 0 00.792.79zm-8.821 2.85a.711.711 0 10-.001 1.422.712.712 0 00.712-.71.713.713 0 00-.711-.712zm0-2.85a.792.792 0 100 1.583.792.792 0 000-1.582zm8.815-2.062c-.473 0-.742-.506-.429-.842a6.225 6.225 0 001.772-4.335 6.23 6.23 0 00-1.755-4.313c-.325-.344-.051-.895.454-.895.506 0 .707.554.389.894a6.231 6.231 0 00-1.771 4.314 6.227 6.227 0 001.754 4.336c.323.343.046.841-.414.841zm-1.945.004c-.47 0-.727-.476-.414-8.34.072-.078.156-.157.242-.239.347-.325.856-.048.856.444v.002c0 .507-.556.705-.889.386-.069-.066-.142-.135-.219-.206a3.71 3.71 0 00-1.031-2.571c-.783-.784-1.814-1.216-2.916-1.216h-.015c-1.106.003-2.139.438-2.921 1.223a3.716 3.716 0 00-1.025 2.572v.003a3.713 3.713 0 001.024 2.571 3.73 3.73 0 002.922 1.223h.3v-.004c0-.506.556-.704.89-.385.068.065.142.134.218.205.347.324.049.83-.41.83H7.59c-.47 0-.73-.45-.412-.819.086-.1.181-.207.285-.318.32-.337.896-.061.9.387.051-.04.103-.08.156-.12a6.138 6.138 0 001.715-4.227 6.144 6.144 0 00-1.701-4.206v-.002a6.166 6.166 0 00-4.342-1.803h-.02a6.167 6.167 0 00-4.353 1.803h-.001A6.148 6.148 0 00.083 17h.001a6.142 6.142 0 001.714 4.23c.055.045.11.084.163.124.01.438.58.694.886.378.1-.104.196-.211.286-.323.313-.364.049-.809-.419-.809-.474 0-.74.507-.431.84.624.672 1.29"></path>
-  </svg>
-);
-
-// USDT icons for different networks
-export const USDTEthereumIcon = () => (
-  <svg
-    width="32"
-    height="32"
-    viewBox="0 0 32 32"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <circle cx="16" cy="16" r="16" fill="#26A17B" />
-    <path
-      d="M17.922 17.383v-.002c-.11.008-.677.042-1.942.042-1.01 0-1.721-.03-1.971-.042v.003c-3.888-.171-6.79-.848-6.79-1.658 0-.809 2.902-1.486 6.79-1.66v-2.12c1.26.013 1.97.044 1.98.044l.003-.002c.01 0 .717-.031 1.961-.044v2.122c3.888.173 6.79.85 6.79 1.659 0 .81-2.902 1.486-6.79 1.657m0-3.966v-.001c-.129.01-.724.044-1.942.044-1.018 0-1.765-.03-1.971-.043v.001c-4.914-.171-8.58-.98-8.58-1.855s3.666-1.684 8.58-1.856v.001c1.245.02 1.988.047 1.988.047.011 0 .717-.03 1.944-.048v-.001c4.915.172 8.58.98 8.58 1.856s-3.665 1.684-8.58 1.855m-1.951 5.274v3.572c-.001 0-.71.037-1.963.037-1.025 0-1.734-.03-1.988-.037v-3.572c.254.008.962.037 1.988.037 1.251 0 1.96-.037 1.963-.037"
-      fill="white"
-    />
-    {/* <!-- Ethereum tag --> */}
-    <circle cx="26" cy="8" r="6" fill="#627EEA" />
-    <text x="26" y="10" font-size="6" text-anchor="middle" fill="white">
-      E
-    </text>
-  </svg>
-);
-
-export const USDTBinanceIcon = () => (
-  <svg
-    width="32"
-    height="32"
-    viewBox="0 0 32 32"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <circle cx="16" cy="16" r="16" fill="#26A17B" />
-    <path
-      d="M17.922 17.383v-.002c-.11.008-.677.042-1.942.042-1.01 0-1.721-.03-1.971-.042v.003c-3.888-.171-6.79-.848-6.79-1.658 0-.809 2.902-1.486 6.79-1.66v-2.12c1.26.013 1.97.044 1.98.044l.003-.002c.01 0 .717-.031 1.961-.044v2.122c3.888.173 6.79.85 6.79 1.659 0 .81-2.902 1.486-6.79 1.657m0-3.966v-.001c-.129.01-.724.044-1.942.044-1.018 0-1.765-.03-1.971-.043v.001c-4.914-.171-8.58-.98-8.58-1.855s3.666-1.684 8.58-1.856v.001c1.245.02 1.988.047 1.988.047.011 0 .717-.03 1.944-.048v-.001c4.915.172 8.58.98 8.58 1.856s-3.665 1.684-8.58 1.855m-1.951 5.274v3.572c-.001 0-.71.037-1.963.037-1.025 0-1.734-.03-1.988-.037v-3.572c.254.008.962.037 1.988.037 1.251 0 1.96-.037 1.963-.037"
-      fill="white"
-    />
-    {/* <!-- Binance tag --> */}
-    <circle cx="26" cy="8" r="6" fill="#F3BA2F" />
-    <text x="26" y="10" font-size="6" text-anchor="middle" fill="white">
-      B
-    </text>
-  </svg>
-);
-
-export const USDTSolanaIcon = () => (
-  <svg
-    width="32"
-    height="32"
-    viewBox="0 0 32 32"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <circle cx="16" cy="16" r="16" fill="#26A17B" />
-    <path
-      d="M17.922 17.383v-.002c-.11.008-.677.042-1.942.042-1.01 0-1.721-.03-1.971-.042v.003c-3.888-.171-6.79-.848-6.79-1.658 0-.809 2.902-1.486 6.79-1.66v-2.12c1.26.013 1.97.044 1.98.044l.003-.002c.01 0 .717-.031 1.961-.044v2.122c3.888.173 6.79.85 6.79 1.659 0 .81-2.902 1.486-6.79 1.657m0-3.966v-.001c-.129.01-.724.044-1.942.044-1.018 0-1.765-.03-1.971-.043v.001c-4.914-.171-8.58-.98-8.58-1.855s3.666-1.684 8.58-1.856v.001c1.245.02 1.988.047 1.988.047.011 0 .717-.03 1.944-.048v-.001c4.915.172 8.58.98 8.58 1.856s-3.665 1.684-8.58 1.855m-1.951 5.274v3.572c-.001 0-.71.037-1.963.037-1.025 0-1.734-.03-1.988-.037v-3.572c.254.008.962.037 1.988.037 1.251 0 1.96-.037 1.963-.037"
-      fill="white"
-    />
-    {/* <!-- Solana tag --> */}
-    <circle cx="26" cy="8" r="6" fill="#9945FF" />
-    <text x="26" y="10" font-size="6" text-anchor="middle" fill="white">
-      S
-    </text>
-  </svg>
-);
-
-// USDC icons for different networks
-export const USDCEthereumIcon = () => (
-  <svg
-    width="32"
-    height="32"
-    viewBox="0 0 32 32"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <circle cx="16" cy="16" r="16" fill="#2C75CA" />
-    <path
-      d="M15.991 26C11.03 26 6.998 21.97 6.998 17.011c0-4.958 4.033-8.99 8.993-8.99 4.958 0 8.991 4.033 8.991 8.99 0 4.959-4.033 8.989-8.99 8.989zm4.445-5.303a.713.713 0 00-.712.71.713.713 0 001.424.001.71.71 0 00-.712-.711zm0-2.85a.794.794 0 00.791-.791.796.796 0 00-.791-.793.795.795 0 00-.792.793.794.794 0 00.792.79zm-8.821 2.85a.711.711 0 10-.001 1.422.712.712 0 00.712-.71.713.713 0 00-.711-.712zm0-2.85a.792.792 0 100 1.583.792.792 0 000-1.582zm8.815-2.062c-.473 0-.742-.506-.429-.842a6.225 6.225 0 001.772-4.335 6.23 6.23 0 00-1.755-4.313c-.325-.344-.051-.895.454-.895.506 0 .707.554.389.894a6.231 6.231 0 00-1.771 4.314 6.227 6.227 0 001.754 4.336c.323.343.046.841-.414.841zm-1.945.004c-.47 0-.727-.476-.414-8.34.072-.078.156-.157.242-.239.347-.325.856-.048.856.444v.002c0 .507-.556.705-.889.386-.069-.066-.142-.135-.219-.206a3.71 3.71 0 00-1.031-2.571c-.783-.784-1.814-1.216-2.916-1.216h-.015c-1.106.003-2.139.438-2.921 1.223a3.716 3.716 0 00-1.025 2.572v.003a3.713 3.713 0 001.024 2.571 3.73 3.73 0 002.922 1.223h.3v-.004c0-.506.556-.704.89-.385.068.065.142.134.218.205.347.324.049.83-.41.83H7.59c-.47 0-.73-.45-.412-.819.086-.1.181-.207.285-.318.32-.337.896-.061.9.387.051-.04.103-.08.156-.12a6.138 6.138 0 001.715-4.227 6.144 6.144 0 00-1.701-4.206v-.002a6.166 6.166 0 00-4.342-1.803h-.02a6.167 6.167 0 00-4.353 1.803h-.001A6.148 6.148 0 00.083 17h.001a6.142 6.142 0 001.714 4.23c.055.045.11.084.163.124.01.438.58.694.886.378.1-.104.196-.211.286-.323.313-.364.049-.809-.419-.809-.474 0-.74.507-.431.84.624.672 1.29 1.238 2.11 1.639a7.305 7.305 0 002.91.727c1.03 0 1.98-.251 2.91-.727a7.307 7.307 0 002.11-1.64c.31-.331.044-.838-.43-.838z"
-      fill="white"
-    />
-    {/* <!-- Ethereum tag --> */}
-    <circle cx="26" cy="8" r="6" fill="#627EEA" />
-    <text x="26" y="10" font-size="6" text-anchor="middle" fill="white">
-      E
-    </text>
-  </svg>
-);
-
-export const USDCBinanceIcon = () => (
-  <svg
-    width="32"
-    height="32"
-    viewBox="0 0 32 32"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <circle cx="16" cy="16" r="16" fill="#2C75CA" />
-    <path
-      d="M15.991 26C11.03 26 6.998 21.97 6.998 17.011c0-4.958 4.033-8.99 8.993-8.99 4.958 0 8.991 4.033 8.991 8.99 0 4.959-4.033 8.989-8.99 8.989zm4.445-5.303a.713.713 0 00-.712.71.713.713 0 001.424.001.71.71 0 00-.712-.711zm0-2.85a.794.794 0 00.791-.791.796.796 0 00-.791-.793.795.795 0 00-.792.793.794.794 0 00.792.79zm-8.821 2.85a.711.711 0 10-.001 1.422.712.712 0 00.712-.71.713.713 0 00-.711-.712zm0-2.85a.792.792 0 100 1.583.792.792 0 000-1.582zm8.815-2.062c-.473 0-.742-.506-.429-.842a6.225 6.225 0 001.772-4.335 6.23 6.23 0 00-1.755-4.313c-.325-.344-.051-.895.454-.895.506 0 .707.554.389.894a6.231 6.231 0 00-1.771 4.314 6.227 6.227 0 001.754 4.336c.323.343.046.841-.414.841zm-1.945.004c-.47 0-.727-.476-.414-8.34.072-.078.156-.157.242-.239.347-.325.856-.048.856.444v.002c0 .507-.556.705-.889.386-.069-.066-.142-.135-.219-.206a3.71 3.71 0 00-1.031-2.571c-.783-.784-1.814-1.216-2.916-1.216h-.015c-1.106.003-2.139.438-2.921 1.223a3.716 3.716 0 00-1.025 2.572v.003a3.713 3.713 0 001.024 2.571 3.73 3.73 0 002.922 1.223h.3v-.004c0-.506.556-.704.89-.385.068.065.142.134.218.205.347.324.049.83-.41.83H7.59c-.47 0-.73-.45-.412-.819.086-.1.181-.207.285-.318.32-.337.896-.061.9.387.051-.04.103-.08.156-.12a6.138 6.138 0 001.715-4.227 6.144 6.144 0 00-1.701-4.206v-.002a6.166 6.166 0 00-4.342-1.803h-.02a6.167 6.167 0 00-4.353 1.803h-.001A6.148 6.148 0 00.083 17h.001a6.142 6.142 0 001.714 4.23c.055.045.11.084.163.124.01.438.58.694.886.378.1-.104.196-.211.286-.323.313-.364.049-.809-.419-.809-.474 0-.74.507-.431.84.624.672 1.29 1.238 2.11 1.639a7.305 7.305 0 002.91.727c1.03 0 1.98-.251 2.91-.727a7.307 7.307 0 002.11-1.64c.31-.331.044-.838-.43-.838z"
-      fill="white"
-    />
-
-    <circle cx="26" cy="8" r="6" fill="#F3BA2F" />
-    <text x="26" y="10" font-size="6" text-anchor="middle" fill="white">
-      B
-    </text>
-  </svg>
-);
-
-export const USDCSolanaIcon = () => (
-  <svg
-    width="32"
-    height="32"
-    viewBox="0 0 32 32"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <circle cx="16" cy="16" r="16" fill="#2C75CA" />
-    <path
-      d="M15.991 26C11.03 26 6.998 21.97 6.998 17.011c0-4.958 4.033-8.99 8.993-8.99 4.958 0 8.991 4.033 8.991 8.99 0 4.959-4.033 8.989-8.99 8.989zm4.445-5.303a.713.713 0 00-.712.71.713.713 0 001.424.001.71.71 0 00-.712-.711zm0-2.85a.794.794 0 00.791-.791.796.796 0 00-.791-.793.795.795 0 00-.792.793.794.794 0 00.792.79zm-8.821 2.85a.711.711 0 10-.001 1.422.712.712 0 00.712-.71.713.713 0 00-.711-.712zm0-2.85a.792.792 0 100 1.583.792.792 0 000-1.582zm8.815-2.062c-.473 0-.742-.506-.429-.842a6.225 6.225 0 001.772-4.335 6.23 6.23 0 00-1.755-4.313c-.325-.344-.051-.895.454-.895.506 0 .707.554.389.894a6.231 6.231 0 00-1.771 4.314 6.227 6.227 0 001.754 4.336c.323.343.046.841-.414.841zm-1.945.004c-.47 0-.727-.476-.414-8.34.072-.078.156-.157.242-.239.347-.325.856-.048.856.444v.002c0 .507-.556.705-.889.386-.069-.066-.142-.135-.219-.206a3.71 3.71 0 00-1.031-2.571c-.783-.784-1.814-1.216-2.916-1.216h-.015c-1.106.003-2.139.438-2.921 1.223a3.716 3.716 0 00-1.025 2.572v.003a3.713 3.713 0 001.024 2.571 3.73 3.73 0 002.922 1.223h.3v-.004c0-.506.556-.704.89-.385.068.065.142.134.218.205.347.324.049.83-.41.83H7.59c-.47 0-.73-.45-.412-.819.086-.1.181-.207.285-.318.32-.337.896-.061.9.387.051-.04.103-.08.156-.12a6.138 6.138 0 001.715-4.227 6.144 6.144 0 00-1.701-4.206v-.002a6.166 6.166 0 00-4.342-1.803h-.02a6.167 6.167 0 00-4.353 1.803h-.001A6.148 6.148 0 00.083 17h.001a6.142 6.142 0 001.714 4.23c.055.045.11.084.163.124.01.438.58.694.886.378.1-.104.196-.211.286-.323.313-.364.049-.809-.419-.809-.474 0-.74.507-.431.84.624.672 1.29 1.238 2.11 1.639a7.305 7.305 0 002.91.727c1.03 0 1.98-.251 2.91-.727a7.307 7.307 0 002.11-1.64c.31-.331.044-.838-.43-.838z"
-      fill="white"
-    />
-    {/* <!-- Solana tag --> */}
-    <circle cx="26" cy="8" r="6" fill="#9945FF" />
-    <text x="26" y="10" font-size="6" text-anchor="middle" fill="white">
-      S
-    </text>
-  </svg>
-);
-
-export const XDCIcon = () => (
+export const XDCIcon = (props) => (
   <svg
     width="32"
     height="32"
@@ -269,8 +375,8 @@ export const XDCIcon = () => (
         y2="16"
         gradientUnits="userSpaceOnUse"
       >
-        <stop stop-color="#2B7FE2" />
-        <stop offset="1" stop-color="#143C7E" />
+        <stop stopColor="#2B7FE2" />
+        <stop offset="1" stopColor="#143C7E" />
       </linearGradient>
       <linearGradient
         id="paint1_linear_9_8"
@@ -280,8 +386,8 @@ export const XDCIcon = () => (
         y2="32"
         gradientUnits="userSpaceOnUse"
       >
-        <stop stop-color="#5BA4FC" />
-        <stop offset="1" stop-color="#2754E2" />
+        <stop stopColor="#5BA4FC" />
+        <stop offset="1" stopColor="#2754E2" />
       </linearGradient>
       <linearGradient
         id="paint2_linear_9_8"
@@ -291,8 +397,8 @@ export const XDCIcon = () => (
         y2="32"
         gradientUnits="userSpaceOnUse"
       >
-        <stop stop-color="#106FFF" />
-        <stop offset="1" stop-color="#0036B7" />
+        <stop stopColor="#106FFF" />
+        <stop offset="1" stopColor="#0036B7" />
       </linearGradient>
       <linearGradient
         id="paint3_linear_9_8"
@@ -302,16 +408,389 @@ export const XDCIcon = () => (
         y2="16"
         gradientUnits="userSpaceOnUse"
       >
-        <stop stop-color="#1D90FF" />
-        <stop offset="1" stop-color="#0045E8" />
+        <stop stopColor="#1D90FF" />
+        <stop offset="1" stopColor="#0045E8" />
       </linearGradient>
     </defs>
   </svg>
 );
 
+// 2. Binance with yellow badge
+export const BinanceWithYellowBadge = (props) => (
+  <svg
+    width="60"
+    height="60"
+    viewBox="0 0 60 60"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Main circle */}
+    <circle cx="25" cy="25" r="25" fill="#F3BA2F" />
+
+    {/* Binance logo */}
+    <path d="M25 13L18 20L21 23L25 19L29 23L32 20L25 13Z" fill="white" />
+    <path d="M32 27L35 24L32 21L29 24L32 27Z" fill="white" />
+    <path d="M21 27L18 24L21 21L24 24L21 27Z" fill="white" />
+    <path d="M25 31L22 28L18 32L25 39L32 32L28 28L25 31Z" fill="white" />
+    <path d="M25 25L27 23L25 21L23 23L25 25Z" fill="white" />
+
+    {/* Yellow badge */}
+    <circle
+      cx="45"
+      cy="45"
+      r="12"
+      fill="#F3BA2F"
+      stroke="white"
+      strokeWidth="2"
+    />
+    <path d="M45 40L42 43L45 46L48 43L45 40Z" fill="white" />
+  </svg>
+);
+
+// 3. Solana with layered bars and white badge
+export const SolanaWithBadge = (props) => (
+  <svg
+    width="60"
+    height="60"
+    viewBox="0 0 60 60"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Solana logo */}
+    <rect x="5" y="13" width="40" height="8" rx="2" fill="#9945FF" />
+    <rect x="5" y="25" width="40" height="8" rx="2" fill="#7C5CFF" />
+    <rect x="5" y="37" width="40" height="8" rx="2" fill="#3EACFF" />
+
+    {/* White badge with lines */}
+    <circle
+      cx="45"
+      cy="45"
+      r="12"
+      fill="white"
+      stroke="white"
+      strokeWidth="2"
+    />
+    <line
+      x1="38"
+      y1="42"
+      x2="52"
+      y2="42"
+      stroke="#7C5CFF"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <line
+      x1="38"
+      y1="45"
+      x2="52"
+      y2="45"
+      stroke="#7C5CFF"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <line
+      x1="38"
+      y1="48"
+      x2="52"
+      y2="48"
+      stroke="#7C5CFF"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export const TetherIcon = (props) => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      data-name="Layer 1"
+      viewBox="0 0 339.43 295.27"
+      width="1em"
+      height="1em"
+      {...props}
+    >
+      <title>{"tether-usdt-logo"}</title>
+      <path
+        d="m62.15 1.45-61.89 130a2.52 2.52 0 0 0 .54 2.94l167.15 160.17a2.55 2.55 0 0 0 3.53 0L338.63 134.4a2.52 2.52 0 0 0 .54-2.94l-61.89-130A2.5 2.5 0 0 0 275 0H64.45a2.5 2.5 0 0 0-2.3 1.45Z"
+        style={{
+          fill: "#50af95",
+          fillRule: "evenodd",
+        }}
+      />
+      <path
+        d="M191.19 144.8c-1.2.09-7.4.46-21.23.46-11 0-18.81-.33-21.55-.46-42.51-1.87-74.24-9.27-74.24-18.13s31.73-16.25 74.24-18.15v28.91c2.78.2 10.74.67 21.74.67 13.2 0 19.81-.55 21-.66v-28.9c42.42 1.89 74.08 9.29 74.08 18.13s-31.65 16.24-74.08 18.12Zm0-39.25V79.68h59.2V40.23H89.21v39.45h59.19v25.86c-48.11 2.21-84.29 11.74-84.29 23.16s36.18 20.94 84.29 23.16v82.9h42.78v-82.93c48-2.21 84.12-11.73 84.12-23.14s-36.09-20.93-84.12-23.15Zm0 0Z"
+        style={{
+          fill: "#fff",
+          fillRule: "evenodd",
+        }}
+      />
+    </svg>
+  );
+};
+
+// 4. Tether with blue badge
+export const TetherWithBlueBadge = (props) => (
+  <svg
+    width="60"
+    height="60"
+    viewBox="0 0 60 60"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Main circle */}
+    <circle cx="25" cy="25" r="25" fill="#26A17B" />
+
+    {/* Tether 'T' logo */}
+    <path d="M15 17H35V21H27V35H23V21H15V17Z" fill="white" />
+
+    {/* Blue badge */}
+    <circle
+      cx="45"
+      cy="45"
+      r="12"
+      fill="#627EEA"
+      stroke="white"
+      strokeWidth="2"
+    />
+    <path d="M45 37L45 42L45 47L45 53L51 45L45 37Z" fill="white" />
+    <path d="M45 37L39 45L45 47L45 37Z" fill="white" fillOpacity="0.8" />
+  </svg>
+);
+
+export const USDCIcon = (props) => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      data-name="86977684-12db-4850-8f30-233a7c267d11"
+      viewBox="0 0 2000 2000"
+      width="1em"
+      height="1em"
+      {...props}
+    >
+      <path
+        fill="#2775ca"
+        d="M1000 2000c554.17 0 1000-445.83 1000-1000S1554.17 0 1000 0 0 445.83 0 1000s445.83 1000 1000 1000z"
+      />
+      <path
+        fill="#fff"
+        d="M1275 1158.33c0-145.83-87.5-195.83-262.5-216.66-125-16.67-150-50-150-108.34s41.67-95.83 125-95.83c75 0 116.67 25 137.5 87.5 4.17 12.5 16.67 20.83 29.17 20.83h66.66c16.67 0 29.17-12.5 29.17-29.16v-4.17c-16.67-91.67-91.67-162.5-187.5-170.83v-100c0-16.67-12.5-29.17-33.33-33.34h-62.5c-16.67 0-29.17 12.5-33.34 33.34v95.83c-125 16.67-204.16 100-204.16 204.17 0 137.5 83.33 191.66 258.33 212.5 116.67 20.83 154.17 45.83 154.17 112.5s-58.34 112.5-137.5 112.5c-108.34 0-145.84-45.84-158.34-108.34-4.16-16.66-16.66-25-29.16-25h-70.84c-16.66 0-29.16 12.5-29.16 29.17v4.17c16.66 104.16 83.33 179.16 220.83 200v100c0 16.66 12.5 29.16 33.33 33.33h62.5c16.67 0 29.17-12.5 33.34-33.33v-100c125-20.84 208.33-108.34 208.33-220.84z"
+      />
+      <path
+        fill="#fff"
+        d="M787.5 1595.83c-325-116.66-491.67-479.16-370.83-800 62.5-175 200-308.33 370.83-370.83 16.67-8.33 25-20.83 25-41.67V325c0-16.67-8.33-29.17-25-33.33-4.17 0-12.5 0-16.67 4.16-395.83 125-612.5 545.84-487.5 941.67 75 233.33 254.17 412.5 487.5 487.5 16.67 8.33 33.34 0 37.5-16.67 4.17-4.16 4.17-8.33 4.17-16.66v-58.34c0-12.5-12.5-29.16-25-37.5zm441.67-1300c-16.67-8.33-33.34 0-37.5 16.67-4.17 4.17-4.17 8.33-4.17 16.67v58.33c0 16.67 12.5 33.33 25 41.67 325 116.66 491.67 479.16 370.83 800-62.5 175-200 308.33-370.83 370.83-16.67 8.33-25 20.83-25 41.67V1700c0 16.67 8.33 29.17 25 33.33 4.17 0 12.5 0 16.67-4.16 395.83-125 612.5-545.84 487.5-941.67-75-237.5-258.34-416.67-487.5-491.67z"
+      />
+    </svg>
+  );
+};
+
+// 5. USD Dollar with blue badge
+export const USDollarWithBlueBadge = (props) => (
+  <svg
+    width="60"
+    height="60"
+    viewBox="0 0 60 60"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Main circle */}
+    <circle cx="25" cy="25" r="25" fill="#2775CA" />
+
+    {/* Dollar sign */}
+    <path
+      d="M25 11C17.3 11 11 17.3 11 25C11 32.7 17.3 39 25 39C32.7 39 39 32.7 39 25C39 17.3 32.7 11 25 11ZM25 36C19 36 14 31 14 25C14 19 19 14 25 14C31 14 36 19 36 25C36 31 31 36 25 36Z"
+      fill="white"
+    />
+    <path
+      d="M27 18H23V21H21V25H23C23 27 24.5 28 27 28V30H23V33H27V36H29V33C31.5 33 34 31.5 34 28C34 24.5 31.5 23 29 23V21H34V18H29V15H27V18ZM29 26C30 26 31 26.5 31 28C31 29.5 30 30 29 30V26ZM27 25V21C26 21 25 21.5 25 23C25 24.5 26 25 27 25Z"
+      fill="white"
+    />
+
+    {/* Blue badge */}
+    <circle
+      cx="45"
+      cy="45"
+      r="12"
+      fill="#627EEA"
+      stroke="white"
+      strokeWidth="2"
+    />
+    <path d="M45 37L45 42L45 47L45 53L51 45L45 37Z" fill="white" />
+    <path d="M45 37L39 45L45 47L45 37Z" fill="white" fillOpacity="0.8" />
+  </svg>
+);
+
+// 6. Tether with yellow badge
+export const TetherWithYellowBadge = (props) => (
+  <svg
+    width="60"
+    height="60"
+    viewBox="0 0 60 60"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Main circle */}
+    <circle cx="25" cy="25" r="25" fill="#26A17B" />
+
+    {/* Tether 'T' logo */}
+    <path d="M15 17H35V21H27V35H23V21H15V17Z" fill="white" />
+
+    {/* Yellow badge */}
+    <circle
+      cx="45"
+      cy="45"
+      r="12"
+      fill="#F3BA2F"
+      stroke="white"
+      strokeWidth="2"
+    />
+    <path d="M45 40L42 43L45 46L48 43L45 40Z" fill="white" />
+  </svg>
+);
+
+// 7. USD Dollar with yellow badge
+export const USDollarWithYellowBadge = (props) => (
+  <svg
+    width="60"
+    height="60"
+    viewBox="0 0 60 60"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Main circle */}
+    <circle cx="25" cy="25" r="25" fill="#2775CA" />
+
+    {/* Dollar sign */}
+    <path
+      d="M25 11C17.3 11 11 17.3 11 25C11 32.7 17.3 39 25 39C32.7 39 39 32.7 39 25C39 17.3 32.7 11 25 11ZM25 36C19 36 14 31 14 25C14 19 19 14 25 14C31 14 36 19 36 25C36 31 31 36 25 36Z"
+      fill="white"
+    />
+    <path
+      d="M27 18H23V21H21V25H23C23 27 24.5 28 27 28V30H23V33H27V36H29V33C31.5 33 34 31.5 34 28C34 24.5 31.5 23 29 23V21H34V18H29V15H27V18ZM29 26C30 26 31 26.5 31 28C31 29.5 30 30 29 30V26ZM27 25V21C26 21 25 21.5 25 23C25 24.5 26 25 27 25Z"
+      fill="white"
+    />
+
+    {/* Yellow badge */}
+    <circle
+      cx="45"
+      cy="45"
+      r="12"
+      fill="#F3BA2F"
+      stroke="white"
+      strokeWidth="2"
+    />
+    <path d="M45 40L42 43L45 46L48 43L45 40Z" fill="white" />
+  </svg>
+);
+
+// 8. Tether with swap badge
+export const TetherWithSwapBadge = (props) => (
+  <svg
+    width="60"
+    height="60"
+    viewBox="0 0 60 60"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Main circle */}
+    <circle cx="25" cy="25" r="25" fill="#26A17B" />
+
+    {/* Tether 'T' logo */}
+    <path d="M15 17H35V21H27V35H23V21H15V17Z" fill="white" />
+
+    {/* Swap badge */}
+    <circle
+      cx="45"
+      cy="45"
+      r="12"
+      fill="white"
+      stroke="white"
+      strokeWidth="2"
+    />
+    <path
+      d="M50 41L46 37L42 41"
+      stroke="#26A17B"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M46 37V53"
+      stroke="#26A17B"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <path
+      d="M40 49L44 53L48 49"
+      stroke="#26A17B"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M44 53V37"
+      stroke="#26A17B"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+// 9. USD Dollar with pink/purple swap badge
+export const USDollarWithPinkSwapBadge = (props) => (
+  <svg
+    width="60"
+    height="60"
+    viewBox="0 0 60 60"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Main circle */}
+    <circle cx="25" cy="25" r="25" fill="#2775CA" />
+
+    {/* Dollar sign */}
+    <path
+      d="M25 11C17.3 11 11 17.3 11 25C11 32.7 17.3 39 25 39C32.7 39 39 32.7 39 25C39 17.3 32.7 11 25 11ZM25 36C19 36 14 31 14 25C14 19 19 14 25 14C31 14 36 19 36 25C36 31 31 36 25 36Z"
+      fill="white"
+    />
+    <path
+      d="M27 18H23V21H21V25H23C23 27 24.5 28 27 28V30H23V33H27V36H29V33C31.5 33 34 31.5 34 28C34 24.5 31.5 23 29 23V21H34V18H29V15H27V18ZM29 26C30 26 31 26.5 31 28C31 29.5 30 30 29 30V26ZM27 25V21C26 21 25 21.5 25 23C25 24.5 26 25 27 25Z"
+      fill="white"
+    />
+
+    {/* Pink/Purple swap badge */}
+    <circle
+      cx="45"
+      cy="45"
+      r="12"
+      fill="#FF9EF6"
+      stroke="white"
+      strokeWidth="2"
+    />
+    <path
+      d="M50 41L46 37L42 41"
+      stroke="#2775CA"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M46 37V53"
+      stroke="#2775CA"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <path
+      d="M40 49L44 53L48 49"
+      stroke="#2775CA"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M44 53V37"
+      stroke="#2775CA"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 //Wallet icons
 
-export const MetamaskIcon = () => (
+export const MetamaskIcon = (props) => (
   <svg
     width="28"
     height="28"
@@ -438,7 +917,7 @@ export const MetamaskIcon = () => (
   </svg>
 );
 
-export const WalletConnectIcon = () => (
+export const WalletConnectIcon = (props) => (
   <svg
     width="28"
     height="28"
@@ -454,7 +933,7 @@ export const WalletConnectIcon = () => (
   </svg>
 );
 
-export const CoinbaseWalletIcon = () => (
+export const CoinbaseWalletIcon = (props) => (
   <svg
     width="28"
     height="28"
@@ -470,7 +949,7 @@ export const CoinbaseWalletIcon = () => (
   </svg>
 );
 
-export const PhantomIcon = () => (
+export const PhantomIcon = (props) => (
   <svg width="32" height="32" viewBox="0 0 32 32">
     <defs>
       <linearGradient

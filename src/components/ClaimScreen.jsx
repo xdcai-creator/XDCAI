@@ -238,7 +238,7 @@ export const ClaimScreen = () => {
             style={{
               width: "100%",
               backgroundColor: "#112211",
-              border: "1px solid #90EE90",
+              border: "1px solid #00FA73",
               borderRadius: "10px",
               color: "white",
               fontSize: "16px",
@@ -251,7 +251,7 @@ export const ClaimScreen = () => {
             }}
           >
             <span>Connect to XDC Network</span>
-            <span style={{ fontWeight: "bold", color: "#90EE90" }}>XDC</span>
+            <span style={{ fontWeight: "bold", color: "#00FA73" }}>XDC</span>
           </button>
         </div>
       )}
@@ -269,7 +269,7 @@ export const ClaimScreen = () => {
         <h3
           style={{
             margin: "0 0 15px 0",
-            color: "#90EE90",
+            color: "#00FA73",
             textAlign: "center",
           }}
         >
@@ -320,7 +320,7 @@ export const ClaimScreen = () => {
               }}
             >
               <span>Currently Available:</span>
-              <span style={{ fontWeight: "bold", color: "#90EE90" }}>
+              <span style={{ fontWeight: "bold", color: "#00FA73" }}>
                 {formatTokenAmount(claimableAmount, tokenDecimals)} $
                 {tokenSymbol}
               </span>
@@ -358,7 +358,7 @@ export const ClaimScreen = () => {
                 style={{
                   width: `${calculateReleasePercentage()}%`,
                   height: "100%",
-                  backgroundColor: "#90EE90",
+                  backgroundColor: "#00FA73",
                   borderRadius: "12px 0 0 12px",
                   transition: "width 0.5s ease-in-out",
                 }}
@@ -411,7 +411,7 @@ export const ClaimScreen = () => {
         <div
           style={{
             textAlign: "center",
-            color: "#90EE90",
+            color: "#00FA73",
             backgroundColor: "rgba(0, 100, 0, 0.2)",
             padding: "15px",
             borderRadius: "5px",
@@ -437,7 +437,7 @@ export const ClaimScreen = () => {
           <p style={{ color: "white", marginBottom: "5px" }}>
             Transaction Hash:
           </p>
-          <p style={{ color: "#90EE90", fontSize: "14px" }}>
+          <p style={{ color: "#00FA73", fontSize: "14px" }}>
             {transactionHash}
           </p>
         </div>
@@ -458,7 +458,7 @@ export const ClaimScreen = () => {
             BigInt(claimableAmount) <= BigInt(0) ||
             isProcessing
               ? "#5a8f5a"
-              : "#90EE90",
+              : "#00FA73",
           border: "none",
           borderRadius: "8px",
           padding: "17px",

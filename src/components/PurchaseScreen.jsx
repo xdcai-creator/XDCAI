@@ -1,6 +1,6 @@
 // File: frontend/src/components/PurchaseScreen.jsx
 // src/components/PurchaseScreen.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAccount, useDisconnect } from "wagmi";
 import { formatUnits } from "viem";
@@ -24,6 +24,7 @@ import {
 import { getNativeCurrencySymbol, formatAddress } from "../utils/chainUtils";
 
 import * as Icons from "./icons/CryptoIcons";
+import BridgeIcon from "./icons/BridgeIcon";
 
 export const PurchaseScreen = ({
   selectedCurrency, // Used in amount calculations
@@ -75,22 +76,10 @@ export const PurchaseScreen = ({
   const [purchaseQuote, setPurchaseQuote] = useState(null);
   const [isGeneratingQuote, setIsGeneratingQuote] = useState(false);
 
-  // Coin network associations with chain IDs
-  const coinNetworks = {
-    ETH: { name: "ETH", chainId: 1 },
-    BNB: { name: "BSC", chainId: 56 },
-    SOL: { name: "SOL", chainId: null }, // Solana isn't an EVM chain
-    USDT: { name: "ETH", chainId: 1 },
-    USDC: { name: "ETH", chainId: 1 },
-    "USDT-BNB": { name: "BSC", chainId: 56 },
-    "USDC-BNB": { name: "BSC", chainId: 56 },
-    "USDT-SOL": { name: "SOL", chainId: null },
-    "USDC-SOL": { name: "SOL", chainId: null },
-    XDC: { name: "XDC", chainId: 50 },
-  };
+  const [activeTab, setActiveTab] = useState("ALL");
+  const [coinPrices, setCoinPrices] = useState({});
 
-  // Original coin data with added network property
-  const coinData = [
+  const dummyCoinData = [
     {
       symbol: "ETH",
       name: "Ethereum",
@@ -127,12 +116,41 @@ export const PurchaseScreen = ({
     { symbol: "XDC", name: "XDC", balance: 0.1, value: 0.04, network: "XDC" },
   ];
 
-  const [activeTab, setActiveTab] = useState("ALL");
-  const [filteredCoins, setFilteredCoins] = useState(coinData);
-  const [coinPrices, setCoinPrices] = useState({});
-
   // Format the address to show as 0x123...abc
   const displayAddress = formatAddress(address);
+
+  //interval price check
+  // useEffect(() => {
+  //  const intervalPriceRefresh = setInterval(() => {
+  //   refreshMarketPrices()
+  //  }, 1000 * 60) //every 1 minute
+  // },[])
+
+  const [filteredCoins, setFilteredCoins] = useState([]);
+
+  //update coin data
+  const coinData = useMemo(() => {
+    if (coinPrices) {
+      const updatedCoinData = dummyCoinData.map((coin) => {
+        // Handle multi-network tokens
+        const priceKey = coin.symbol.includes("-")
+          ? coin.symbol.split("-")[0]
+          : coin.symbol;
+
+        // Get the price from coinPrices, default to 0 if not found
+        const currentPrice = coinPrices[priceKey] || 0;
+
+        return {
+          ...coin,
+          value: currentPrice, // Calculate current value
+        };
+      });
+
+      setFilteredCoins(updatedCoinData);
+
+      return updatedCoinData;
+    }
+  }, [coinPrices]);
 
   // Fetch contract info and market prices when contract is loaded
   useEffect(() => {
@@ -158,10 +176,10 @@ export const PurchaseScreen = ({
           const contractBalance = await tokenContract?.balanceOf(
             presaleContract.address
           );
-          console.log(
-            "Contract XDCAI balance:",
-            ethers.utils.formatUnits(contractBalance, 18)
-          );
+          // console.log(
+          //   "Contract XDCAI balance:",
+          //   ethers.utils.formatUnits(contractBalance, 18)
+          // );
         }
 
         if (tokenContract && !tokenLoading) {
@@ -237,7 +255,13 @@ export const PurchaseScreen = ({
       }
 
       setIsGeneratingQuote(true);
-      const quote = await getPrepurchaseQuote(selectedCurrency, ethAmount);
+      const tokenPriceInUsd = parseFloat(formatTokenAmount(tokenPrice));
+      //
+      const quote = await getPrepurchaseQuote({
+        symbol: selectedCurrency,
+        amount: ethAmount,
+        xdcaiPrice: tokenPriceInUsd,
+      });
       setPurchaseQuote(quote);
 
       // Update XDCAI amount based on the quote
@@ -371,7 +395,7 @@ export const PurchaseScreen = ({
         return;
       }
 
-      // Verify contract has enough tokens
+      // Verify contract has enough XDCAI tokens
       const contractBalance = await checkContractTokenBalance();
       if (contractBalance && purchaseQuote) {
         const requiredTokens = ethers.utils.parseUnits(
@@ -379,136 +403,241 @@ export const PurchaseScreen = ({
           18
         );
 
-        if (contractBalance.lt(requiredTokens)) {
-          setError(
-            `Purchase amount too large.`
-            // Maximum available:
-            //${ethers.utils.formatUnits(
-            //   contractBalance,
-            //   18
-            // )} tokens`
-          );
+        if (
+          Number(ethers.utils.formatUnits(contractBalance, 18)) <
+          Number(ethers.utils.formatUnits(requiredTokens, 18))
+        ) {
+          setError(`Purchase amount too large.`);
           return;
         }
       }
 
+      // Processing begins
       setIsProcessing(true);
-
-      // Show processing toast notification
       const processingToastId = showProcessingTransaction();
       setToastId(processingToastId);
 
-      // For XDC purchases (native token)
-      if (selectedCurrency === "XDC") {
-        const parsedAmount = ethers.utils.parseEther(ethAmount);
+      let tx;
+      let receipt;
 
-        // Add more detailed logging
+      // Determine if selected currency is native token or ERC20
+      const isNativeToken = selectedCurrency === "XDC";
+      const isErc20Token = ["USDT", "USDC"].includes(selectedCurrency);
 
-        console.log("Calling buyWithNativeCoin...");
+      if (!isNativeToken && !isErc20Token) {
+        setError(`${selectedCurrency} is not supported yet.`);
+        setIsProcessing(false);
+        return;
+      }
 
-        // Use a more explicit transaction approach with better error handling
-        try {
-          // Create transaction object with explicit gas settings
-          const txOptions = {
-            value: parsedAmount,
-            gasLimit: ethers.utils.hexlify(300000), // Explicit gas limit
+      try {
+        // HANDLE NATIVE TOKEN (XDC)
+        if (isNativeToken) {
+          // Process native token payment (XDC)
+          tx = await processNativeTokenPayment(ethAmount);
+        }
+        // HANDLE ERC20 TOKENS (USDT, USDC)
+        else if (isErc20Token) {
+          // Process ERC20 token payment
+          tx = await processErc20TokenPayment(
+            selectedCurrency,
+            ethAmount,
+            processingToastId
+          );
+        }
+
+        if (!tx) throw new Error("Transaction failed to initiate");
+
+        // Set transaction hash for UI display
+        setTransactionHash(tx.hash);
+
+        // Update toast to show waiting for confirmation
+        updateToast(processingToastId, {
+          render: "Transaction submitted, waiting for confirmation...",
+        });
+
+        // Wait for transaction confirmation
+        console.log("Waiting for transaction confirmation...");
+        receipt = await tx.wait();
+
+        // Check transaction success
+        if (receipt.status === 1) {
+          console.log("Transaction successful:", receipt);
+
+          const usdValue = parseFloat(ethAmount) * coinPrices[selectedCurrency];
+
+          // Store transaction details for thank you page
+          const txDetails = {
+            amount: ethAmount,
+            currency: selectedCurrency,
+            tokenDecimals:
+              selectedCurrency === "USDT" || selectedCurrency === "USDC"
+                ? 6
+                : 18,
+            tokens: xdcaiAmount,
+            tokensReceived: xdcaiAmount,
+            bonusTokens: bonusAmount.toString() || "0",
+            hash: tx.hash || "",
+            usdValue,
           };
 
-          // Send transaction
-          const tx = await presaleContract.buyWithNativeCoin(txOptions);
-          setTransactionHash(tx.hash);
+          localStorage.setItem("xdcai_tx_details", JSON.stringify(txDetails));
 
-          // Update toast to show transaction is pending
-          updateToast(processingToastId, {
-            render: "Transaction submitted, waiting for confirmation...",
-          });
+          // Show success notification
+          showPurchaseSuccess(tx.hash);
 
-          // Wait for confirmation with timeout handling
-          console.log("Waiting for transaction confirmation...");
-          const receipt = await tx.wait();
-          console.log("Transaction confirmed:", receipt);
-
-          if (receipt.status === 1) {
-            console.log("Transaction successful");
-
-            const txDetails = {
-              amount: ethAmount,
-              currency: selectedCurrency,
-              tokens: xdcaiAmount,
-              bonusTokens: bonusAmount.toString() || "0",
-              hash: tx.hash,
-            };
-
-            localStorage.setItem("xdcai_tx_details", JSON.stringify(txDetails));
-
-            // Update the processing toast to success
-            showPurchaseSuccess(tx.hash);
-            // Success - move to thank you screen
-            navigate("/thank-you");
-          } else {
-            throw new Error(
-              "Transaction failed with status: " + receipt.status
-            );
-          }
-        } catch (txError) {
-          console.error("Transaction execution error:", txError);
-
-          // Check for specific error types
-          if (txError.code === "ACTION_REJECTED") {
-            setError("Transaction was rejected by user.");
-            handlePurchaseError(new Error("Transaction rejected by user"));
-          } else if (txError.code === "INSUFFICIENT_FUNDS") {
-            setError("Insufficient funds for gas * price + value.");
-            handlePurchaseError(new Error("Insufficient funds"));
-          } else if (txError.message && txError.message.includes("gas")) {
-            setError(
-              "Transaction failed: Gas estimation failed or out of gas. Try increasing gas limit."
-            );
-            handlePurchaseError(new Error("Gas estimation error"));
-          } else {
-            setError("Transaction failed. Please check console for details.");
-            handlePurchaseError(txError);
-          }
+          // Navigate to thank you page
+          navigate("/thank-you");
+        } else {
+          throw new Error("Transaction failed with status: " + receipt.status);
         }
-      } else {
-        // Handle other tokens here
-        setError("Only XDC purchases are supported for testing on Apothem");
-        handlePurchaseError(new Error("Only XDC purchases are supported"));
+      } catch (txError) {
+        console.error("Transaction error:", txError);
+        handleTransactionError(txError);
       }
     } catch (err) {
       console.error("Purchase error:", err);
-      // Use our toast handler to display friendly error
       handlePurchaseError(err);
-      // Set a simpler error message in the UI
       setError("Transaction failed. Please try again or contact support.");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Get logo URL for a currency
-  const getCurrencyLogo = (symbol) => {
-    switch (symbol) {
-      case "ETH":
-        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzYyN0VFQSIvPjxnIGZpbGw9IiNGRkYiIGZpbGwtcnVsZT0ibm9uemVybyI+PHBhdGggZmlsbC1vcGFjaXR5PSIuNjAyIiBkPSJNMTYuNDk4IDR2OS4xMDNMOCA1VjE2LjQ5OHoiLz48cGF0aCBkPSJNMTYuNDk4IDRMMjUgMTYuNDk4TDE2LjQ5OCAxMy4xMDNWNHoiLz48cGF0aCBmaWxsLW9wYWNpdHk9Ii42MDIiIGQ9Ik0xNi40OTggMjEuOTc2djYuMDIxTDggMTZsMTYuNDk4IDguMjV2LTIuMjc0TDE2LjQ5OCAyMS45NzZ6Ii8+PHBhdGggZD0iTTE2LjQ5OCAyNy45OTVWMjEuOTc2TDI1IDE2TDE2LjQ5OCAyNy45OTV6Ii8+PHBhdGggZmlsbC1vcGFjaXR5PSIuMiIgZD0iTTE2LjQ5OCAyMC41NzNMMjQuODk1IDE2LjE5TDE2LjQ5OCAxMy4xMDR2Ny40N3oiLz48cGF0aCBmaWxsLW9wYWNpdHk9Ii42MDIiIGQ9Ik04IDEhNi4xOWw4LjQ5OCA3LjQ3VjEzLjFMOCAxNi4xOTB6Ii8+PC9nPjwvZz48L3N2Zz4=";
-      case "BNB":
-        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNGM0JBMkYiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIuMTE2IDE0LjQwNEwxNiAxMC41MmwzLjg4NiAzLjg4NiAyLjI2IDIuMjZMMTYgMjIuNzg0bC02LjE0NC02LjE0NCAxLjE0NC0xLjE0NCAxLjExNi0xLjA5MnpNOS4wNzYgMTYuNDY0bDEuMTQ0LTEuMTQgNS43OCA1Ljc3OC01Ljc4IDUuNzgtMS4xNDQtMS4xNDRMMTMuNzA4IDIxbC00LjYzMi00LjUzNnptMTMuODQ4IDBsLTEuMTQ0IDEuMTQ0TDE3LjE0OCAyMWw0LjYzMiA0LjYzNiAxLjE0NC0xLjE0NC01Ljc4LTUuNzggNS43OC01Ljc3OHpNMTYgOEw4IDE2bDEuMTQ0IDEuMTQ0TDE2IDEwLjI4OGw2Ljg1NiA2Ljg1NkwyNCAuNnoiLz48L2c+PC9zdmc+";
-      case "SOL":
-        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiM2ODBBNCI+PC9jaXJjbGU+PHBhdGggZD0iTTkuOTQgMjAuMTg4YzEuMjM1IDAgNC40MSAwIDUuNTI5IDBhLjQxLjQxIDAgMSAwIDAtLjgyMWgtNS41M2EuNDEuNDEgMCAwIDEgMC0uODIxaDYuMzUyYS40MS40MSAwIDEgMCAwLS44MjJIMTAuNzZhLjQxLjQxIDAgMCAxIDAtLjgyMWg0LjcwNWMxLjIzNSAwIDIuODc2LTEuMjMzIDMuNjk0LTIuMDVsLjIwNy0uMjA4Yy4yMjktLjIyOC42LTYuNDEyLjYtOC4wMzhNMjIuMDU4IDEyLjYzNWgtNS41M2EuNDEuNDEgMCAwIDEgMC0uODIyaDYuMzUyYS40MS40MSAwIDEgMCAwLS44MjJIMTYuMjlhLjQxLjQxIDAgMCAxIDAtLjgyMWg0LjcwNGMxLjIzNiAwIDIuODc3LTEuMjMyIDMuNjk1LTIuMDUiIGZpbGw9IiNGRkYiPjwvcGF0aD48cGF0aCBkPSJNMjIuMDU4IDE5LjM2NmEuNDEuNDEgMCAwIDEgMCAuODIyaC01LjUzYS40MS40MSAwIDAgMCAwIC44MjFoNi4zNTJhLjQxLjQxIDAgMSAxIDAgLjgyMkgxNi4yOWEuNDEuNDEgMCAwIDAgMCAuODIxaDQuNzA0YzEuMjM2IDAgMi44NzcgMS4yMzMgMy42OTUgMi4wNWwuMjA3LjIwN2MuMjI5LjIyOS42IDYuNDEzLjYgOC4wMzgiIGZpbGw9IiNGRkYiPjwvcGF0aD48cGF0aCBkPSJNOS45NCAyMy41MTFoNS41MjlhLjQxLjQxIDAgMSAxIDAgLjgyMmgtNi4zNTJhLjQxLjQxIDAgMCAwIDAgLjgyMWg1LjU4OWEuNDEuNDEgMCAwIDEgMCAuODIxSDkuOTRjLTEuMjM2IDAtMi44NzcgMS4yMzMtMy42OTQgMi4wNSIgZmlsbD0iI0ZGRiI+PC9wYXRoPjwvZz48L3N2Zz4=";
-      case "USDT":
-      case "USDT-BNB":
-      case "USDT-SOL":
-        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzI2QTE3QiIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xNy45MjIgMTcuMzgzdi0uMDAyYy0uMTEuMDA4LS42NzcuMDQyLTEuOTQyLjA0Mi0xLjAxIDAtMS43MjEtLjAzLTEuOTcxLS4wNDJ2LjAwM2MtMy44ODgtLjE3MS02Ljc5LS44NDgtNi43OS0xLjY1OCAwLS44MDkgMi45MDItMS40ODYgNi43OS0xLjY2di0yLjEyYzEuMjYuMDEzIDEuOTcuMDQ0IDEuOTguMDQ0bC4wMDMtLjAwMmMuMDEgMCAuNzE3LS4wMzEgMS45NjEtLjA0NHYyLjEyMmMzLjg4OC4xNzMgNi43OS44NSA2Ljc5IDEuNjU5IDAgLjgxLTIuOTAyIDEuNDg2LTYuNzkgMS42NTdtMC0zLjk2NnYtLjAwMWMtLjEyOS4wMS0uNzI0LjA0NC0xLjk0Mi4wNDQtMS4wMTggMC0xLjc2NS0uMDMtMS45NzEtLjA0M3YuMDAxYy00LjkxNC0uMTcxLTguNTgtLjk4LTguNTgtMS44NTVzMy42NjYtMS42ODQgOC41OC0xLjg1NnYuMDAxYzEuMjQ1LjAyIDEuOTg4LjA0NyAxLjk4OC4wNDcuMDExIDAgLjcxNy0uMDMgMS45NDQtLjA0OHYtLjAwMWM0LjkxNS4xNzIgOC41OC45OCA4LjU4IDEuODU2cy0zLjY2NSAxLjY4NC04LjU4IDEuODU1bS0xLjk1MSA1LjI3NHYzLjU3MmMtLjAwMSAwLS43MS4wMzctMS45NjMuMDM3LTEuMDI1IDAtMS43MzQtLjAzLTEuOTg4LS4wMzd2LTMuNTcyYy4yNTQuMDA4Ljk2Mi4wMzcgMS45ODguMDM3IDEuMjUxIDAgMS45Ni0uMDM3IDEuOTYzLS4wMzciLz48L2c+PC9zdmc+";
-      case "USDC":
-      case "USDC-BNB":
-      case "USDC-SOL":
-        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzJDNzVDQSIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xNS45OTEgMjZDMTEuMDMgMjYgNi45OTggMjEuOTcgNi45OTggMTcuMDExYzAtNC45NTggNC4wMzMtOC45OSA4Ljk5My04Ljk5IDQuOTU4IDAgOC45OTEgNC4wMzMgOC45OTEgOC45OSAwIDQuOTU5LTQuMDMzIDguOTg5LTguOTkgOC45ODl6bTQuNDQ1LTUuMzAzYS43MTMuNzEzIDAgMCAwLS43MTIuNzEuNzEzLjcxMyAwIDAgMCAxLjQyNC4wMDEuNzEuNzEgMCAwIDAtLjcxMi0uNzExem0wLTIuODVhLjc5NC43OTQgMCAwIDAgLjc5MS0uNzkxLjc5Ni43OTYgMCAwIDAtLjc5MS0uNzkzLjc5NS43OTUgMCAwIDAtLjc5Mi43OTMuNzk0Ljc5NCAwIDAgMCAuNzkyLjc5em0tOC44MjEgMi44NWEuNzExLjcxMSAwIDEgMC0uMDAxIDEuNDIyLjcxMi43MTIgMCAwIDAgLjcxMi0uNzEuNzEzLjcxMyAwIDAgMC0uNzExLS43MTJ6bTAtMi44NWEuNzkyLjc5MiAwIDEgMCAwIDEuNTgzLjc5Mi43OTIgMCAwIDAgMC0xLjU4MnptOC44MTUtMi4wNjJjLS40NzMgMC0uNzQyLS41MDYtLjQyOS0uODQyYTYuMjI1IDYuMjI1IDAgMCAwIDEuNzcyLTQuMzM1IDYuMjMgNi4yMyAwIDAgMC0xLjc1NS00LjMxM2MtLjMyNS0uMzQ0LS4wNTEtLjg5NS40NTQtLjg5NS41MDYgMCAuNzA3LjU1NC4zODkuODk0YTYuMjMxIDYuMjMxIDAgMCAwLTEuNzcxIDQuMzE0IDYuMjI3IDYuMjI3IDAgMCAwIDEuNzU0IDQuMzM2Yy4zMjMuMzQzLjA0Ni44NDEtLjQxNC44NDF6bS0xLjk0NS4wMDRjLS40NyAwLS43MjctLjQ3Ni0uNDE0LTguMzQuMDcyLS4wNzguMTU2LS4xNTcuMjQyLS4yMzkuMzQ3LS4zMjUuODU2LS4wNDguODU2LjQ0NHYuMDAyYzAgLjUwNy0uNTU2LjcwNS0uODg5LjM4Ni0uMDY5LS4wNjYtLjE0Mi0uMTM1LS4yMTktLjIwNmEzLjcxIDMuNzEgMCAwIDAtMS4wMzEtMi41NzFjLS43ODMtLjc4NC0xLjgxNC0xLjIxNi0yLjkxNi0xLjIxNmgtLjAxNWMtMS4xMDYuMDAzLTIuMTM5LjQzOC0yLjkyMSAxLjIyM2EzLjcxNiAzLjcxNiAwIDAgMC0xLjAyNSAyLjU3MnYuMDAzYTMuNzEzIDMuNzEzIDAgMCAwIDEuMDI0IDIuNTcxIDMuNzMgMy43MyAwIDAgMCAyLjkyMiAxLjIyM2guM3YtLjAwNGMwLS41MDYuNTU2LS43MDQuODktLjM4NS4wNjguMDY1LjE0Mi4xMzQuMjE4LjIwNS4zNDcuMzI0LjA0OS44My0uNDEuODNINy41OWMtLjQ3IDAtLjczLS40NS0uNDEyLS44MTkuMDg2LS4xLjE4MS0uMjA3LjI4NS0uMzE4LjMyLS4zMzcuODk2LS4wNjEuOS4zODcuMDUxLS4wNC4xMDMtLjA4LjE1Ni0uMTJhNi4xMzggNi4xMzggMCAwIDAgMS43MTUtNC4yMjcgNi4xNDQgNi4xNDQgMCAwIDAtMS43MDEtNC4yMDZ2LS4wMDJhNi4xNjYgNi4xNjYgMCAwIDAtNC4zNDItMS44MDNoLS4wMmE2LjE2NyA2LjE2NyAwIDAgMC00LjM1MyAxLjgwM2gtLjAwMUE2LjE0ODYuMTQ4IDAgMCAwIC4wODMgMTdoLjAwMWE2LjE0MiA2LjE0MiAwIDAgMCAxLjcxNCA0LjIzYy4wNTUuMDQ1LjExLjA4NC4xNjMuMTI0LjAxLjQzOC41OC42OTQuODg2LjM3OC4xLS4xMDQuMTk2LS4yMTEuMjg2LS4zMjMuMzEzLS4zNjQuMDQ5LS44MDktLjQxOS0uODA5LS40NzQgMC0uNzQuNTA3LS40MzEuODQuNjI0LjY3MiAxLjI5IDEuMjM4IDIuMTEgMS42MzlhNy4zMDUgNy4zMDUgMCAwIDAgMi45MS43MjdjMS4wMyAwIDEuOTgtLjI1MSAyLjkxLS43MjdhNy4zMDcgNy4zMDcgMCAwIDAgMi4xMS0xLjY0Yy4zMS0uMzMxLjA0NC0uODM4LS40My0uODM4eiIvPjwvZz48L3N2Zz4=";
-      case "XDC":
-        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNjQgNjQiPjxkZWZzPjxzdHlsZT4uYXtmaWxsOiMxZDFkMWQ7fS5ie2ZpbGw6IzEwMGYwZDt9LmN7ZmlsbDp1cmwoI2EpO30uZHtmaWxsOnVybCgjYik7fS5le2ZpbGw6dXJsKCNjKTt9LmZ7ZmlsbDp1cmwoI2QpO308L3N0eWxlPjxsaW5lYXJHcmFkaWVudCBpZD0iYSIgeDE9IjQ4IiB5MT0iMTYiIHgyPSI0OCIgeTI9IjQ4IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMmI3ZmUyIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMTQzYzdlIi8+PC9saW5lYXJHcmFkaWVudD48bGluZWFyR3JhZGllbnQgaWQ9ImIiIHgxPSIxNiIgeTE9IjE2IiB4Mj0iMTYiIHkyPSI0OCIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzViYTRmYyIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzI3NTRlMiIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJjIiB4MT0iMTYiIHkxPSIzMiIgeDI9IjQ4IiB5Mj0iMzIiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMxMDZmZmYiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMwMDM2YjciLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0iZCIgeDE9IjE2IiB5MT0iMzIiIHgyPSI0OCIgeTI9IjMyIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMWQ5MGZmIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMDA0NWU4Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHRpdGxlPnhpbmZpbjwvdGl0bGU+PHBhdGggY2xhc3M9ImEiIGQ9Ik0zMiw1OGEyNiwyNiwwLDEsMSwxOC4zODQtNy42MTZBMjUuODU3LDI1Ljg1NywwLDAsMSwzMiw1OFoiLz48cGF0aCBjbGFzcz0iYiIgZD0iTTMyLDhBMjQsMjQsMCwxLDEsOCwzMiwyNC4wMjcsMjQuMDI3LDAsMCwxLDMyLDhtMC00QTI4LDI4LDAsMSwwLDYwLDMyLDI4LDI4LDAsMCwwLDMyLDRaIi8+PHBhdGggY2xhc3M9ImMiIGQ9Ik00OCw0OEgzMlYzMmgxNlYxNmgxNlY0OFoiLz48cGF0aCBjbGFzcz0iZCIgZD0iTTMyLDQ4SDE2VjMyaDEyaDB2MTZaIi8+PC9zdmc+";
-      default:
-        return "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiI+PGcgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNDNEM0QzQiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTYgN2E5IDkgMCAxIDAgMCAxOCA5IDkgMCAwIDAgMC0xOHptMS40OTggMTMuMDc4aC0zdi0zLjA1OWgzdjMuMDZ6bTAtNC4zNzVoLTN2LTQuNzAzaDN2NC43MDN6Ii8+PC9nPjwvc3ZnPg==";
+  // Helper function to process native token payment (XDC)
+  const processNativeTokenPayment = async (amount) => {
+    console.log("Processing native XDC payment...");
+
+    // Parse amount to Wei (18 decimals for XDC)
+    const parsedAmount = ethers.utils.parseUnits(amount, 18);
+
+    // Create transaction options
+    const txOptions = {
+      value: parsedAmount,
+      gasLimit: ethers.utils.hexlify(BigInt(300000)),
+    };
+
+    // Send transaction
+    return await presaleContract.buyWithNativeCoin(txOptions);
+  };
+
+  // Helper function to process ERC20 token payment (USDT, USDC)
+  const processErc20TokenPayment = async (tokenSymbol, amount, toastId) => {
+    console.log(`Processing ${tokenSymbol} payment...`);
+
+    // Get the appropriate contract based on token symbol
+    let tokenContract;
+    if (tokenSymbol === "USDT") {
+      tokenContract = usdtContractRef.current;
+    } else if (tokenSymbol === "USDC") {
+      tokenContract = usdcContractRef.current;
+    }
+
+    if (!tokenContract) {
+      throw new Error(`${tokenSymbol} contract not initialized`);
+    }
+
+    // Get token decimals
+    const decimals = await tokenContract.decimals();
+    console.log(`${tokenSymbol} decimals:`, decimals);
+
+    // Parse amount (typically 6 decimals for USDT/USDC)
+    const parsedAmount = ethers.utils.parseUnits(amount, decimals);
+
+    // Step 1: Approve tokens
+    console.log(`Approving ${tokenSymbol} tokens...`);
+    updateToast(toastId, {
+      render: `Approving ${tokenSymbol} transfer, please confirm in your wallet...`,
+    });
+
+    // Send approval transaction
+    const approveTx = await tokenContract.approve(
+      presaleContract.address,
+      parsedAmount
+    );
+    const approveReceipt = await approveTx.wait();
+
+    if (approveReceipt.status !== 1) {
+      throw new Error(`${tokenSymbol} approval failed`);
+    }
+
+    // Step 2: Execute purchase with approved tokens
+    console.log(`${tokenSymbol} approval successful, executing purchase...`);
+    updateToast(toastId, {
+      render: `${tokenSymbol} approved, now processing purchase transaction...`,
+    });
+
+    // Send purchase transaction
+    return await presaleContract.buyWithToken(
+      tokenContract.address,
+      parsedAmount,
+      { gasLimit: ethers.toHexString(BigInt(300000)) }
+    );
+  };
+
+  // Helper function to handle transaction errors
+  const handleTransactionError = (error) => {
+    // Detect common error types
+    if (error.code === "ACTION_REJECTED") {
+      setError("Transaction was rejected by user.");
+      handlePurchaseError(new Error("Transaction rejected by user"));
+    } else if (error.code === "INSUFFICIENT_FUNDS") {
+      setError("Insufficient funds for transaction.");
+      handlePurchaseError(new Error("Insufficient funds"));
+    } else if (error.message?.includes("user rejected")) {
+      setError("Transaction was rejected by user.");
+      handlePurchaseError(new Error("Transaction rejected by user"));
+    } else if (error.message?.includes("gas")) {
+      setError("Transaction failed: Gas estimation failed or out of gas.");
+      handlePurchaseError(new Error("Gas estimation error"));
+    } else if (error.message?.includes("approve")) {
+      setError("Token approval failed. Please try again.");
+      handlePurchaseError(new Error("Token approval failed"));
+    } else {
+      setError("Transaction failed. Please check console for details.");
+      handlePurchaseError(error);
     }
   };
+
+  // Get logo URL for a currency
+  const getCurrencyLogo = (symbol) => {
+    if (svgIconToSymbolMatcher[symbol]) return svgIconToSymbolMatcher[symbol];
+  };
+
+  const svgIconToSymbolMatcher = {
+    ETH: <Icons.EthereumIcon />,
+    BNB: (
+      <div className="scale-[2] ml-2">
+        <Icons.BinanceIcon />
+      </div>
+    ),
+    SOL: (
+      <div className="scale-[1.8] ml-2">
+        <Icons.SolanaIcon />
+      </div>
+    ),
+    USDT: (
+      <div className="scale-[2] ml-2">
+        <Icons.TetherIcon />
+      </div>
+    ),
+    "USDT-BNB": (
+      <BridgeIcon Icon1={Icons.TetherIcon} Icon2={Icons.BinanceIcon} />
+    ),
+    "USDT-SOL": (
+      <BridgeIcon Icon1={Icons.TetherIcon} Icon2={Icons.SolanaIcon} />
+    ),
+    USDC: (
+      <div className="scale-[2] ml-2">
+        <Icons.USDCIcon />
+      </div>
+    ),
+    "USDC-BNB": <BridgeIcon Icon1={Icons.USDCIcon} Icon2={Icons.BinanceIcon} />,
+    "USDC-SOL": <BridgeIcon Icon1={Icons.USDCIcon} Icon2={Icons.SolanaIcon} />,
+    XDC: <Icons.XDCIcon />,
+  };
+
+  const bridgeIcon = (Icon1, Icon2) => {};
 
   // Handle disconnect with correct screen change
   const handleDisconnect = async () => {
@@ -534,90 +663,88 @@ export const PurchaseScreen = ({
     // Calculate USD value
     const usdValue = parseFloat(amount) * coinPrice;
 
-    let percent;
-
-    // Apply bonus tiers
-    if (usdValue > 5000) percent = 10;
+    // Determine bonus percentage
+    let bonusPercent;
+    if (usdValue > 5000) bonusPercent = 10;
     // 10% for >$5000
-    else if (usdValue > 2000) percent = 4;
+    else if (usdValue > 2000) bonusPercent = 4;
     // 4% for >$2000 and ≤$5000
-    else if (usdValue >= 1000) percent = 2;
+    else if (usdValue >= 1000) bonusPercent = 2;
     // 2% for ≥$1000 and ≤$2000
-    else percent = 0; // 0% for <$1000
+    else bonusPercent = 0; // 0% for <$1000
 
-    const bonus = (percent / 100) * amount;
-    console.log("usdValue ", usdValue);
-    console.log("percent ", percent);
-    return bonus;
+    // Calculate base XDCAI tokens (without bonus)
+    // We need to convert USD value to XDCAI tokens using the token price
+    const tokenPriceInUsd = parseFloat(formatTokenAmount(tokenPrice));
+    const baseTokens = usdValue / tokenPriceInUsd;
+
+    // Calculate bonus tokens (same as contract does)
+    const bonusTokens = (baseTokens * bonusPercent) / 100;
+
+    return bonusTokens;
   };
 
   const bonusAmount = React.useMemo(() => {
-    console.log("ethAmount ", ethAmount);
-    console.log("coinPrices[selectedCurrency] ", coinPrices[selectedCurrency]);
     if (!ethAmount || !coinPrices[selectedCurrency]) return 0;
     return calculateBonus(ethAmount, coinPrices[selectedCurrency]);
   }, [ethAmount, coinPrices[selectedCurrency]]);
 
-  console.log(" bonusAmount ", bonusAmount);
-
-  return (
-    <div
-      className="purchase-screen"
-      style={{ maxWidth: "600px", margin: "0 auto" }}
-    >
-      {showCurrencySelection ? (
+  const renderPageMain = () => {
+    if (showCurrencySelection) {
+      return (
         <div className="currency-selection">
           <h2 className="text-lg text-white font-medium mb-4">
             Select a currency
           </h2>
 
           {/* Tabs */}
-          <div className="flex mb-4">
+          <div className="flex mb-4 overflow-x-auto scrollbar-hide h-[50px] space-x-2 px-2">
             <button
-              className={`px-4 py-2 text-sm ${
+              className={`flex-shrink-0 px-4 py-2 text-sm whitespace-nowrap ${
                 activeTab === "ALL"
-                  ? "bg-[#00FF7F] text-black"
-                  : "bg-[#1A1A1A] text-white"
-              } rounded-l-md`}
+                  ? "bg-[#00FF7F] text-white"
+                  : "bg-[#1A1A1A] text-[#d2d2d2]"
+              } rounded-md`}
               onClick={() => setActiveTab("ALL")}
             >
               ALL
             </button>
             <button
-              className={`px-4 py-2 text-sm flex items-center ${
+              className={`flex-shrink-0 px-4 py-2 text-sm flex items-center whitespace-nowrap ${
                 activeTab === "ETH"
-                  ? "bg-[#00FF7F] text-black"
-                  : "bg-[#1A1A1A] text-white"
-              }`}
+                  ? "bg-[#00FF7F] text-white"
+                  : "bg-[#1A1A1A] text-[#d2d2d2]"
+              } rounded-md space-x-2`}
               onClick={() => setActiveTab("ETH")}
             >
-              <img
-                src={Icons.EthereumIcon}
-                alt="ETH"
-                className="w-4 h-4 mr-1"
-              />{" "}
-              ETH
+              <Icons.EthereumIcon className="w-5 h-5" />
+              <span>ETH</span>
             </button>
             <button
-              className={`px-4 py-2 text-sm flex items-center ${
+              className={`flex-shrink-0 px-4 py-2 text-sm flex items-center whitespace-nowrap ${
                 activeTab === "BSC"
-                  ? "bg-[#00FF7F] text-black"
-                  : "bg-[#1A1A1A] text-white"
-              }`}
+                  ? "bg-[#00FF7F] text-white"
+                  : "bg-[#1A1A1A] text-[#d2d2d2]"
+              } rounded-md space-x-2`}
               onClick={() => setActiveTab("BSC")}
             >
-              <img src={Icons.BnbIcon} alt="BSC" className="w-4 h-4 mr-1" /> BSC
+              <div className="scale-[1.5]">
+                <Icons.BinanceIcon />
+              </div>
+              <span>BSC</span>
             </button>
             <button
-              className={`px-4 py-2 text-sm flex items-center ${
+              className={`flex-shrink-0 px-4 py-2 text-sm flex items-center whitespace-nowrap ${
                 activeTab === "SOL"
-                  ? "bg-[#00FF7F] text-black"
-                  : "bg-[#1A1A1A] text-white"
-              } rounded-r-md`}
+                  ? "bg-[#00FF7F] text-white"
+                  : "bg-[#1A1A1A] text-[#d2d2d2]"
+              } rounded-md space-x-2`}
               onClick={() => setActiveTab("SOL")}
             >
-              <img src={Icons.SolanaIcon} alt="SOL" className="w-4 h-4 mr-1" />{" "}
-              SOL
+              <div className="scale-[1.5]">
+                <Icons.SolanaIcon />
+              </div>
+              <span>SOL</span>
             </button>
           </div>
 
@@ -629,11 +756,7 @@ export const PurchaseScreen = ({
                 onClick={() => handleCurrencySelect(coin.symbol)}
               >
                 <div className="currency-icon-wrapper">
-                  <img
-                    src={getCurrencyLogo(coin.symbol)}
-                    alt={coin.symbol}
-                    style={{ width: "32px", height: "32px" }}
-                  />
+                  {getCurrencyLogo(coin.symbol)}
                 </div>
                 <div className="currency-info">
                   <div className="currency-name">{coin.name}</div>
@@ -643,218 +766,45 @@ export const PurchaseScreen = ({
                   <div className="currency-value">
                     ~${coin.value.toFixed(3)}
                   </div>
-                  <div className="currency-amount">{coin.balance}</div>
+                  {/* <div className="currency-amount">{coin.balance}</div> */}
                 </div>
               </div>
             ))}
           </div>
         </div>
-      ) : (
-        <>
-          {/* Account Information Section */}
-          <div
-            style={{
-              marginBottom: "20px",
-              backgroundColor: "#1a1a1a",
-              border: "1px solid #333",
-              borderRadius: "10px",
-              padding: "15px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-              }}
-            >
-              <div
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "50%",
-                  backgroundColor: "#90EE90",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  marginRight: "10px",
-                  fontSize: "16px",
-                  color: "#1a1a1a",
-                  fontWeight: "bold",
-                }}
-              >
-                {displayAddress.charAt(0)}
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontWeight: "bold",
-                    fontSize: "16px",
-                  }}
-                >
-                  {displayAddress}
-                </div>
-                <div
-                  style={{
-                    fontSize: "14px",
-                    color: "#90EE90",
-                  }}
-                >
-                  Connected
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={handleDisconnect}
-              style={{
-                backgroundColor: "transparent",
-                border: "1px solid #ff4c4c",
-                borderRadius: "6px",
-                color: "#ff4c4c",
-                padding: "6px 10px",
-                fontSize: "14px",
-                cursor: "pointer",
-              }}
-            >
-              Disconnect
-            </button>
-          </div>
+      );
+    }
 
-          {/* Header section */}
-          <div className="presale-header">
+    return (
+      <>
+        {/* Payment section */}
+        <div style={{ padding: "0 5px" }}>
+          {/* Pay with crypto field */}
+          <div style={{ marginBottom: "25px" }}>
             <p
               style={{
-                textAlign: "right",
-                margin: "10px 0",
+                textAlign: "left",
+                margin: "5px 0",
                 fontSize: "16px",
                 color: "#ccc",
               }}
             >
-              Can't find tokens in your wallet?
+              Pay with {selectedCurrency}
             </p>
-            <div className=" text-[5px] !text-white bg-[#425152]">
-              Take advantage of Huge Early Staking Rewards by becoming an early
-              adopter!
-            </div>
             <div
               style={{
-                textAlign: "center",
-                color: "#90EE90",
-                fontSize: "38px",
-                fontWeight: "bold",
-                margin: "25px 0",
-                lineHeight: "1.2",
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "10px",
               }}
             >
-              BUY ${tokenSymbol} PRESALE NOW!
-            </div>
-          </div>
-
-          {/* Payment section */}
-          <div style={{ padding: "0 5px" }}>
-            {/* Pay with crypto field */}
-            <div style={{ marginBottom: "25px" }}>
-              <p
-                style={{
-                  textAlign: "left",
-                  margin: "5px 0",
-                  fontSize: "16px",
-                  color: "#ccc",
-                }}
-              >
-                Pay with {selectedCurrency}
-              </p>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: "10px",
-                }}
-              >
-                <input
-                  type="text"
-                  value={ethAmount}
-                  onChange={handleAmountChange}
-                  placeholder="0"
-                  style={{
-                    flex: "1",
-                    backgroundColor: "#1a1a1a",
-                    border: "1px solid #333",
-                    borderRadius: "8px",
-                    padding: "15px",
-                    fontSize: "20px",
-                    color: "white",
-                    height: "55px",
-                    boxSizing: "border-box",
-                  }}
-                />
-                <button
-                  onClick={() => setShowCurrencySelection(true)}
-                  style={{
-                    width: "120px",
-                    backgroundColor: "#1a1a1a",
-                    border: "1px solid #333",
-                    borderRadius: "8px",
-                    padding: "0 15px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "white",
-                    cursor: "pointer",
-                    height: "55px",
-                    boxSizing: "border-box",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "28px",
-                      height: "28px",
-                      borderRadius: "50%",
-                      backgroundColor: "#627EEA",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginRight: "8px",
-                    }}
-                  >
-                    <img
-                      src={getCurrencyLogo(selectedCurrency)}
-                      alt={selectedCurrency}
-                      style={{
-                        width: "16px",
-                        height: "16px",
-                      }}
-                    />
-                  </div>
-                  <span style={{ fontSize: "18px", fontWeight: "bold" }}>
-                    {selectedCurrency}
-                  </span>
-                  <span style={{ marginLeft: "8px" }}>▼</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Receive XDCAI field */}
-            <div style={{ marginBottom: "5px" }}>
-              <p
-                style={{
-                  textAlign: "left",
-                  margin: "5px 0",
-                  fontSize: "16px",
-                  color: "#ccc",
-                }}
-              >
-                Receive ${tokenSymbol}
-              </p>
               <input
                 type="text"
-                value={xdcaiAmount}
-                readOnly
+                value={ethAmount}
+                onChange={handleAmountChange}
                 placeholder="0"
                 style={{
-                  width: "100%",
+                  flex: "1",
                   backgroundColor: "#1a1a1a",
                   border: "1px solid #333",
                   borderRadius: "8px",
@@ -863,118 +813,284 @@ export const PurchaseScreen = ({
                   color: "white",
                   height: "55px",
                   boxSizing: "border-box",
-                  marginBottom: "5px",
                 }}
               />
-              <p
+              <button
+                onClick={() => setShowCurrencySelection(true)}
                 style={{
-                  textAlign: "right",
-                  margin: "5px 0 20px 0",
-                  fontSize: "14px",
-                  color: "#aaa",
+                  width: "120px",
+                  backgroundColor: "#1a1a1a",
+                  border: "1px solid #333",
+                  borderRadius: "8px",
+                  padding: "0 15px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "white",
+                  cursor: "pointer",
+                  height: "55px",
+                  boxSizing: "border-box",
                 }}
               >
-                1 ${tokenSymbol} ={" "}
-                {isLoadingPrice ? "Loading..." : formatTokenPrice(tokenPrice)}
-              </p>
+                <div
+                  style={{
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "50%",
+                    backgroundColor: "#627EEA",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: "8px",
+                  }}
+                >
+                  <img
+                    src={getCurrencyLogo(selectedCurrency)}
+                    alt={selectedCurrency}
+                    style={{
+                      width: "16px",
+                      height: "16px",
+                    }}
+                  />
+                </div>
+                <span style={{ fontSize: "18px", fontWeight: "bold" }}>
+                  {selectedCurrency}
+                </span>
+                <span style={{ marginLeft: "8px" }}>▼</span>
+              </button>
             </div>
+          </div>
 
-            {bonusAmount > 0 && (
-              <div className="mb-4">
-                <p className="text-gray-400 text-xs mb-1">
-                  Extra $XDCAI Bonus Token
-                </p>
-                <input
-                  type="text"
-                  value={bonusAmount.toFixed(8)}
-                  readOnly
-                  className="w-full bg-[#1A1A1A] rounded-md border border-[#333333] rounded-md p-3 text-white text-lg"
-                />
-              </div>
-            )}
-
-            {/* Error message - displayed only if there's an error */}
-            {error && (
-              <div
-                style={{
-                  textAlign: "center",
-                  color: "#ff6b6b",
-                  backgroundColor: "rgba(100, 0, 0, 0.2)",
-                  padding: "15px",
-                  borderRadius: "5px",
-                  marginBottom: "25px",
-                }}
-              >
-                {error}
-              </div>
-            )}
-
-            {/* Transaction status indicators */}
-            {isProcessing && (
-              <div
-                style={{
-                  textAlign: "center",
-                  color: "#90EE90",
-                  backgroundColor: "rgba(0, 100, 0, 0.2)",
-                  padding: "15px",
-                  borderRadius: "5px",
-                  marginBottom: "25px",
-                }}
-              >
-                Transaction submitted, waiting for confirmation...
-              </div>
-            )}
-
-            {/* Transaction hash display */}
-            {transactionHash && (
-              <div
-                style={{
-                  textAlign: "center",
-                  backgroundColor: "rgba(0, 0, 0, 0.2)",
-                  padding: "15px",
-                  borderRadius: "5px",
-                  marginBottom: "25px",
-                  wordBreak: "break-all",
-                }}
-              >
-                <p style={{ color: "white", marginBottom: "5px" }}>
-                  Transaction Hash:
-                </p>
-                <p style={{ color: "#90EE90", fontSize: "14px" }}>
-                  {transactionHash}
-                </p>
-              </div>
-            )}
-
-            {/* Buy button */}
-            <button
-              onClick={handlePurchase}
-              disabled={isProcessing || isLoadingPrice}
+          {/* Receive XDCAI field */}
+          <div style={{ marginBottom: "5px" }}>
+            <p
               style={{
-                width: "100%",
-                backgroundColor:
-                  isProcessing || isLoadingPrice ? "#5a8f5a" : "#90EE90",
-                border: "none",
-                borderRadius: "8px",
-                padding: "17px",
-                fontSize: "20px",
-                fontWeight: "bold",
-                color: "black",
-                cursor:
-                  isProcessing || isLoadingPrice ? "not-allowed" : "pointer",
-                marginBottom: "15px",
-                height: "60px",
+                textAlign: "left",
+                margin: "5px 0",
+                fontSize: "16px",
+                color: "#ccc",
               }}
             >
-              {isProcessing
-                ? "PROCESSING..."
-                : isLoadingPrice
-                ? "LOADING..."
-                : `BUY ${tokenSymbol}`}
-            </button>
+              Receive ${tokenSymbol}
+            </p>
+            <input
+              type="text"
+              value={xdcaiAmount}
+              readOnly
+              placeholder="0"
+              style={{
+                width: "100%",
+                backgroundColor: "#1a1a1a",
+                border: "1px solid #333",
+                borderRadius: "8px",
+                padding: "15px",
+                fontSize: "20px",
+                color: "white",
+                height: "55px",
+                boxSizing: "border-box",
+                marginBottom: "5px",
+              }}
+            />
+            <p
+              style={{
+                textAlign: "right",
+                margin: "5px 0 20px 0",
+                fontSize: "14px",
+                color: "#aaa",
+              }}
+            >
+              1 ${tokenSymbol} ={" "}
+              {isLoadingPrice ? "Loading..." : formatTokenPrice(tokenPrice)}
+            </p>
           </div>
-        </>
-      )}
+
+          {bonusAmount > 0 && (
+            <div className="mb-10">
+              <p className="text-[#cccccc] text-[15px] mb-1 text-left">
+                Extra $XDCAI Bonus Token
+              </p>
+              <input
+                type="text"
+                value={bonusAmount.toFixed(8)}
+                readOnly
+                className="w-full bg-[#1A1A1A] rounded-md border border-[#333333] rounded-md p-3 text-white text-lg"
+              />
+            </div>
+          )}
+
+          {/* Error message - displayed only if there's an error */}
+          {error && (
+            <div
+              style={{
+                textAlign: "center",
+                color: "#ff6b6b",
+                backgroundColor: "rgba(100, 0, 0, 0.2)",
+                padding: "15px",
+                borderRadius: "5px",
+                marginBottom: "25px",
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          {/* Transaction status indicators */}
+          {isProcessing && (
+            <div
+              style={{
+                textAlign: "center",
+                color: "#00FA73",
+                backgroundColor: "rgba(0, 100, 0, 0.2)",
+                padding: "15px",
+                borderRadius: "5px",
+                marginBottom: "25px",
+              }}
+            >
+              Transaction submitted, waiting for confirmation...
+            </div>
+          )}
+
+          {/* Buy button */}
+          <button
+            onClick={handlePurchase}
+            disabled={isProcessing || isLoadingPrice}
+            style={{
+              width: "100%",
+              backgroundColor:
+                isProcessing || isLoadingPrice ? "#5a8f5a" : "#00FA73",
+              border: "none",
+              borderRadius: "8px",
+              padding: "17px",
+              fontSize: "20px",
+              fontWeight: "500",
+              color: "black",
+              cursor:
+                isProcessing || isLoadingPrice ? "not-allowed" : "pointer",
+              marginBottom: "15px",
+              height: "60px",
+            }}
+          >
+            {isProcessing
+              ? "PROCESSING..."
+              : isLoadingPrice
+              ? "LOADING..."
+              : `BUY $${tokenSymbol}`}
+          </button>
+        </div>
+      </>
+    );
+  };
+
+  return (
+    <div
+      className="purchase-screen p-4 pt-12 max-w-[600px]"
+      // style={{ maxWidth: "", margin: "0 auto" }}
+    >
+      <div className="text-[11px] text-white font-[600] bg-[#425152] absolute top-0 right-0 left-0 w-[fit-content] text-center overflow-x-auto">
+        The future of AI-powered agents is here - Grab $XDCAI at presale prices
+        & fuel the AI revolution
+      </div>
+      {/* Account Information Section */}
+      <div
+        style={{
+          marginBottom: "20px",
+          backgroundColor: "#1a1a1a",
+          border: "1px solid #333",
+          borderRadius: "10px",
+          padding: "15px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <div
+            style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              backgroundColor: "#00FA73",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              marginRight: "10px",
+              fontSize: "16px",
+              color: "#1a1a1a",
+              fontWeight: "bold",
+            }}
+          >
+            {displayAddress.charAt(0)}
+          </div>
+          <div>
+            <div
+              style={{
+                fontWeight: "bold",
+                fontSize: "16px",
+              }}
+            >
+              {displayAddress}
+            </div>
+            <div
+              style={{
+                fontSize: "14px",
+                color: "#00FA73",
+              }}
+            >
+              Connected
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={handleDisconnect}
+          style={{
+            backgroundColor: "transparent",
+            border: "1px solid #ff4c4c",
+            borderRadius: "6px",
+            color: "#ff4c4c",
+            padding: "6px 10px",
+            fontSize: "14px",
+            cursor: "pointer",
+          }}
+        >
+          Disconnect
+        </button>
+      </div>
+
+      {/* Header section */}
+      <div className="presale-header">
+        <p
+          style={{
+            textAlign: "right",
+            margin: "10px 0",
+            fontSize: "16px",
+            color: "#ccc",
+          }}
+        >
+          Can't find tokens in your wallet?
+        </p>
+      </div>
+      <div className=" text-[20px] text-center !text-white  ">
+        Take advantage of Huge Early Staking Rewards by becoming an early
+        adopter!
+      </div>
+      <div
+        style={{
+          textAlign: "center",
+          color: "#00FA73",
+          fontSize: "38px",
+          fontWeight: "600",
+          margin: "25px 0",
+          lineHeight: "1.2",
+        }}
+      >
+        BUY ${tokenSymbol} PRESALE NOW!
+      </div>
+      {renderPageMain()}
     </div>
   );
 };

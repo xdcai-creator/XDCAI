@@ -57,7 +57,8 @@ export const ThankYouScreen = () => {
             setUserEmail(data.email);
             setEmailSubmitted(true);
 
-            //to trigger purchase notification email on backend
+            //to trigger purchase notification email on backend if user email already stored previously
+            //
             // await storeEmailApi(data.email);
           } else {
             setEmailSubmitted(false);
@@ -139,6 +140,7 @@ export const ThankYouScreen = () => {
         // Any additional data you want to send
         bonusTokens: txDetails.bonusTokens || "0",
         hash: txDetails.hash || "",
+        usdValue: txDetails.usdValue || 0,
       };
 
       // Submit email to backend API
@@ -185,10 +187,16 @@ export const ThankYouScreen = () => {
             // marginBottom: "20px",
           }}
         >
-          <h3 style={{ textAlign: "center", margin: "0 0 15px 0" }}>
+          <h3
+            className="text-white "
+            style={{ textAlign: "center", margin: "0 0 15px 0" }}
+          >
             Stay Updated on Your Investment
           </h3>
-          <p style={{ margin: "0 0 15px 0", fontSize: "14px", color: "#aaa" }}>
+          <p
+            className="text-center"
+            style={{ margin: "0 0 15px 0", fontSize: "14px", color: "#aaa" }}
+          >
             Provide your email to receive important updates about your tokens,
             vesting schedule, and XDCAI project news.
           </p>
@@ -200,15 +208,16 @@ export const ThankYouScreen = () => {
               onChange={(e) => setEmailInput(e.target.value)}
               placeholder="Enter your email address"
               style={{
-                width: "100%",
-                padding: "12px",
+                // width: "100%",
+                // padding: "12px",
                 boxSizing: "border-box",
-                backgroundColor: "#2a2a2a",
-                border: "1px solid #444",
-                borderRadius: "6px",
+                // backgroundColor: "#2a2a2a",
+                // border: "1px solid #444",
+                // borderRadius: "6px",
                 color: "white",
                 marginBottom: "15px",
               }}
+              className="w-full bg-[#1A1A1A] rounded-md border border-[#333333] rounded-md p-3 text-white text-lg"
             />
 
             <button
@@ -217,7 +226,7 @@ export const ThankYouScreen = () => {
               style={{
                 width: "100%",
                 padding: "12px",
-                backgroundColor: isSubmittingEmail ? "#5a8f5a" : "#90EE90",
+                backgroundColor: isSubmittingEmail ? "#5a8f5a" : "#00FA73",
                 border: "none",
                 borderRadius: "6px",
                 color: "black",
@@ -236,14 +245,14 @@ export const ThankYouScreen = () => {
       <div
         style={{
           backgroundColor: "rgba(0, 100, 0, 0.1)",
-          border: "1px solid #90EE90",
+          border: "1px solid #00FA73",
           borderRadius: "10px",
           padding: "15px",
           marginBottom: "20px",
           textAlign: "center",
         }}
       >
-        <p style={{ color: "#90EE90", fontWeight: "bold" }}>
+        <p style={{ color: "#00FA73", fontWeight: "bold" }}>
           Email submitted successfully!
         </p>
         <p style={{ fontSize: "14px", color: "#aaa", margin: "10px 0 0 0" }}>
@@ -255,13 +264,11 @@ export const ThankYouScreen = () => {
 
   return (
     <div className="thank-you-screen">
-      <h2
-        style={{ fontSize: "26px", textAlign: "center", marginBottom: "20px" }}
-      >
+      <div className="text-[#707070] text-[20px] text-center mb-[20px]">
         Thanks for purchasing XDCAI tokens!
-      </h2>
+      </div>
 
-      <p style={{ textAlign: "center", margin: "15px 0" }}>
+      <p className="text-[15px] text-center text-[#707070]">
         In order to claim your tokens, please connect to the XDC network.
       </p>
 
@@ -296,7 +303,7 @@ export const ThankYouScreen = () => {
               backgroundColor: isXdcConnected ? "#5a8f5a" : "#112211",
               border: isXdcConnected
                 ? "1px solid #5a8f5a"
-                : "1px solid #90EE90",
+                : "1px solid #00FA73",
               borderRadius: "10px",
               color: "white",
               fontSize: "16px",
@@ -311,7 +318,7 @@ export const ThankYouScreen = () => {
             </span>
             <span
               className="xdc-icon"
-              style={{ color: "#90EE90", fontWeight: "bold" }}
+              style={{ color: "#00FA73", fontWeight: "bold" }}
             >
               XDC
             </span>
@@ -332,7 +339,7 @@ export const ThankYouScreen = () => {
         >
           <h3
             style={{
-              color: "#90EE90",
+              color: "#00FA73",
               margin: "0 0 10px 0",
               textAlign: "center",
             }}
@@ -390,7 +397,7 @@ export const ThankYouScreen = () => {
         style={{
           width: "100%",
           padding: "15px",
-          backgroundColor: isXdcConnected ? "#90EE90" : "#5a8f5a",
+          backgroundColor: isXdcConnected ? "#00FA73" : "#5a8f5a",
           color: "black",
           border: "none",
           borderRadius: "10px",

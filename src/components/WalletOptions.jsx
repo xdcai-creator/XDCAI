@@ -176,7 +176,7 @@ export function WalletOptions({ setSelectedWallet, onError }) {
           target="_blank"
           rel="noreferrer"
           style={{
-            color: "#90EE90",
+            color: "#00FA73",
             textDecoration: "none",
             fontWeight: "500",
           }}
@@ -237,7 +237,7 @@ export function WalletOptions({ setSelectedWallet, onError }) {
             marginTop: "20px",
             padding: "10px 15px",
             backgroundColor: "rgba(144, 238, 144, 0.1)",
-            color: "#90EE90",
+            color: "#00FA73",
             borderRadius: "5px",
             textAlign: "center",
             width: "100%",

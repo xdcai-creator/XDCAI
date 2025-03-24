@@ -95,7 +95,7 @@ export function WalletOption({
         alignItems: "center",
         padding: "15px 20px",
         backgroundColor: "#112211",
-        border: isSelected ? "1px solid #90EE90" : "1px solid #303030",
+        border: isSelected ? "1px solid #00FA73" : "1px solid #303030",
         borderRadius: "10px",
         color: "white",
         fontSize: "18px",

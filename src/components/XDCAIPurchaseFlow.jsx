@@ -24,18 +24,9 @@ const XDCAIPurchaseFlow = () => {
   };
 
   return (
-    <div className="xdcai-purchase-floww !flex !justify-center !items-center min-h-screen w-[100vw]">
-      <div className="relative">
-        <div className="relative max-w-md w-full rounded-lg !bg-[#121212] shadow-lg  p-4">
-          {/* Widget side decorations */}
-          {/* <div className="absolute bg-[#121212] right-[-12px] top-[180px] z-10">
-            <div className="w-[40px] h-[40px] bg-[#121212] flex items-center justify-center transform rotate-45 mb-2">
-              <span className="transform -rotate-45 text-[#00FF7F]">X</span>
-            </div>
-            <div className="w-[40px] h-[40px] bg-[#121212] flex items-center justify-center transform rotate-45 mb-2">
-              <span className="transform -rotate-45 text-[#00FF7F]">🔍</span>
-            </div>
-          </div> */}
+    <div className="flex justify-center items-center min-h-screen w-full px-4 py-6 bg-[black]">
+      <div className="w-full max-w-md">
+        <div className="relative w-full rounded-lg bg-[#121212] border-2 border-[#425152] shadow-lg overflow-hidden">
           <Routes>
             {/* Home route - shows initial welcome screen */}
             <Route path="/" element={<InitialScreen />} />
