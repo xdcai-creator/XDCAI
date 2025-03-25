@@ -8,17 +8,24 @@ export const NETWORKS = {
   BSC_TESTNET: 97,
 };
 
+const VITE_XDC_AI_TOKEN_ADDRESS = import.meta.env.VITE_XDC_AI_TOKEN_ADDRESS;
+const VITE_XDC_AI_TOKEN_TESTNET_ADDRESS = import.meta.env
+  .VITE_XDC_AI_TOKEN_TESTNET_ADDRESS;
+const VITE_XDC_AI_PRESALE_ADDRESS = import.meta.env.VITE_XDC_AI_PRESALE_ADDRESS;
+const VITE_XDC_AI_PRESALE_TESTNET_ADDRESS = import.meta.env
+  .VITE_XDC_AI_PRESALE_TESTNET_ADDRESS;
+
 // Contract addresses - replace with your deployed contract addresses
 export const CONTRACT_ADDRESSES = {
   // XDC Mainnet
   50: {
-    XDCAIPresale2: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e", // Replace with actual address when deployed
-    XDCAIToken: "0x9a67f1940164d0318612b497e8e6038f902a00a4", // Replace with actual address when deployed
+    XDCAIPresale2: VITE_XDC_AI_PRESALE_ADDRESS, // Replace with actual address when deployed
+    XDCAIToken: VITE_XDC_AI_TOKEN_ADDRESS, // Replace with actual address when deployed
   },
   // XDC Testnet (Apothem)
   51: {
-    XDCAIPresale2: "0x7fE7de1eE2f9d75F2Ff5bFa555DB97043e9DA9A7", // Replace with actual address when deployed
-    XDCAIToken: "0xAdC076c5D138F7A1e85a7313ecf33f111fF20e0A", // Replace with actual address when deployed
+    XDCAIPresale2: VITE_XDC_AI_PRESALE_TESTNET_ADDRESS, // Replace with actual address when deployed
+    XDCAIToken: VITE_XDC_AI_TOKEN_TESTNET_ADDRESS, // Replace with actual address when deployed
   },
   // Ethereum Mainnet - For testing with Ethereum
   1: {

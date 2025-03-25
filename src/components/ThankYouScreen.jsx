@@ -346,12 +346,32 @@ export const ThankYouScreen = () => {
 
       // Get the claimable amount first to check if there's anything to claim
       const claimable = await contract.getClaimableAmount(address);
+      const vestingInfo = await contract.getVestingInfo(address);
+
+      // console.log("claimable ", ethers.utils.formatUnits(claimable, 18));
+      // console.log(
+      //   "Total amount:",
+      //   ethers.utils.formatUnits(vestingInfo.totalAmount, 18)
+      // );
+      // console.log(
+      //   "Released so far:",
+      //   ethers.utils.formatUnits(vestingInfo.releasedAmount, 18)
+      // );
+      // console.log(
+      //   "Currently vested:",
+      //   ethers.utils.formatUnits(vestingInfo.vestedAmount, 18)
+      // );
+      // console.log(
+      //   "Next unlock time:",
+      //   new Date(vestingInfo.nextUnlockTime * 1000).toLocaleString()
+      // );
 
       if (claimable.toString() === "0") {
         toast.info("No tokens available to claim at this time.");
         return;
       }
 
+      return;
       // Execute the claim transaction
       const tx = await contract.claimTokens();
       toast.info("Transaction submitted, waiting for confirmation...");
@@ -422,12 +442,11 @@ export const ThankYouScreen = () => {
   if (!emailSubmitted) {
     return (
       <div className="p-5">
-        <h3 className="text-white text-center mb-4">
+        {/* <h3 className="text-white text-center mb-4">
           Stay Updated on Your Investment
-        </h3>
-        <p className="text-center text-[#aaa] text-sm mb-4">
-          Provide your email to receive important updates about your tokens,
-          vesting schedule, and XDCAI project news.
+        </h3> */}
+        <p className="text-white text-[#aaa] text-sm mb-4">
+          Please Enter Your Email ID To Claim The $XDCAI Tokens
         </p>
 
         <form onSubmit={handleEmailSubmit}>
