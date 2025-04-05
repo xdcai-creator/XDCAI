@@ -23,6 +23,15 @@ import {
 } from "../services/priceService";
 import { getNativeCurrencySymbol, formatAddress } from "../utils/chainUtils";
 
+import {
+  registerTransactionIntent,
+  storeIntentId,
+  getStoredIntentId,
+  getIntentStatus,
+  clearStoredIntentId,
+} from "../services/transactionIntentService";
+import { showWarning } from "../utils/toastHandler";
+
 import * as Icons from "./icons/CryptoIcons";
 import BridgeIcon from "./icons/BridgeIcon";
 
@@ -79,6 +88,12 @@ export const PurchaseScreen = ({
   const [activeTab, setActiveTab] = useState("ALL");
   const [coinPrices, setCoinPrices] = useState({});
 
+  //payment intent
+  const [intentId, setIntentId] = useState(null);
+  const [intentExpiry, setIntentExpiry] = useState(null);
+  const [intentTimeRemaining, setIntentTimeRemaining] = useState(null);
+  const [intentStatus, setIntentStatus] = useState(null);
+
   const dummyCoinData = [
     {
       symbol: "ETH",
@@ -125,6 +140,39 @@ export const PurchaseScreen = ({
   //   refreshMarketPrices()
   //  }, 1000 * 60) //every 1 minute
   // },[])
+
+  //check for existing intent on component mount
+  useEffect(() => {
+    const storedIntentId = getStoredIntentId();
+    if (storedIntentId) {
+      setIntentId(storedIntentId);
+      // Check the status of the stored intent
+      checkIntentStatus(storedIntentId);
+    }
+  }, []);
+
+  // useEffect to handle the countdown timer for intent expiration
+  useEffect(() => {
+    if (!intentExpiry) return;
+
+    const countdownInterval = setInterval(() => {
+      const now = new Date();
+      const expiryTime = new Date(intentExpiry);
+      const timeRemaining = Math.max(0, Math.floor((expiryTime - now) / 1000)); // in seconds
+
+      setIntentTimeRemaining(timeRemaining);
+
+      if (timeRemaining <= 0) {
+        clearInterval(countdownInterval);
+        setIntentStatus("EXPIRED");
+        clearStoredIntentId();
+        setIntentId(null);
+        showWarning("Transaction time window expired. Please try again.");
+      }
+    }, 1000);
+
+    return () => clearInterval(countdownInterval);
+  }, [intentExpiry]);
 
   const [filteredCoins, setFilteredCoins] = useState([]);
 
@@ -292,6 +340,31 @@ export const PurchaseScreen = ({
     }
   };
 
+  const checkIntentStatus = async (id) => {
+    try {
+      const result = await getIntentStatus(id);
+      setIntentStatus(result.status);
+      setIntentExpiry(result.expiresAt);
+
+      // If the intent is already expired or verified, clear it
+      if (result.status === "EXPIRED") {
+        clearStoredIntentId();
+        setIntentId(null);
+        showWarning(
+          "Previous transaction time window expired. Please try again."
+        );
+      } else if (result.status === "VERIFIED") {
+        // Intent was verified, show success message
+        showSuccess("Your transaction was verified successfully!");
+      }
+    } catch (error) {
+      console.error("Error checking intent status:", error);
+      // Clear invalid intent
+      clearStoredIntentId();
+      setIntentId(null);
+    }
+  };
+
   // Check contract token balance
   const checkContractTokenBalance = async () => {
     try {
@@ -392,6 +465,30 @@ export const PurchaseScreen = ({
 
       if (!presaleContract) {
         setError("Contract not loaded. Please try again.");
+        return;
+      }
+
+      try {
+        const intentResult = await registerTransactionIntent({
+          walletAddress: address,
+          expectedAmount: ethAmount,
+          paymentCurrency: selectedCurrency,
+          expectedChain: getCurrentChainIdentifier(), // Function to determine current chain
+        });
+
+        // Store the intent ID and update state
+        setIntentId(intentResult.intentId);
+        setIntentStatus("PENDING");
+        setIntentExpiry(intentResult.expiresAt);
+        storeIntentId(intentResult.intentId);
+
+        // Show toast with time window
+        showInfo(
+          `You have ${intentResult.timeWindowMinutes} minutes to complete this transaction`
+        );
+      } catch (intentError) {
+        console.error("Error registering transaction intent:", intentError);
+        setError("Failed to register transaction intent. Please try again.");
         return;
       }
 
@@ -501,6 +598,25 @@ export const PurchaseScreen = ({
       setError("Transaction failed. Please try again or contact support.");
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const getCurrentChainIdentifier = () => {
+    // Map Wagmi chainId to our backend chain identifiers
+    switch (currentChainId) {
+      case 1: // Ethereum Mainnet
+      case 5: // Goerli
+      case 11155111: // Sepolia
+        return "ethereum";
+      case 56: // BSC Mainnet
+      case 97: // BSC Testnet
+        return "bsc";
+      case 50: // XDC Mainnet
+      case 51: // XDC Testnet (Apothem)
+        return "xdc";
+      // Add Solana mapping if needed
+      default:
+        return "xdc"; // Default to XDC
     }
   };
 
@@ -947,6 +1063,21 @@ export const PurchaseScreen = ({
               }}
             >
               Transaction submitted, waiting for confirmation...
+            </div>
+          )}
+
+          {intentId && intentTimeRemaining > 0 && (
+            <div className="bg-[#1A1A1A] p-4 rounded-md mb-4 border border-[#333] text-center">
+              <p className="text-[#00FA73] font-medium mb-1">
+                Time Window Active
+              </p>
+              <p className="text-white text-sm">
+                Complete your transaction within{" "}
+                <span className="font-bold text-[#00FA73]">
+                  {Math.floor(intentTimeRemaining / 60)}:
+                  {(intentTimeRemaining % 60).toString().padStart(2, "0")}
+                </span>
+              </p>
             </div>
           )}
 

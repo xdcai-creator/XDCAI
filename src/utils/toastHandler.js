@@ -106,3 +106,54 @@ export const updateToast = (toastId, message, type = "info") => {
     closeButton: true,
   });
 };
+
+/**
+ * Show an info toast
+ * @param {string} message - The message to display
+ * @returns {string} - Toast ID
+ */
+export const showInfo = (message) => {
+  return toast.info(message, {
+    position: "bottom-center",
+    autoClose: 5000,
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    progress: undefined,
+  });
+};
+
+/**
+ * Show a warning toast
+ * @param {string} message - The message to display
+ * @returns {string} - Toast ID
+ */
+export const showWarning = (message) => {
+  return toast.warning(message, {
+    position: "bottom-center",
+    autoClose: 5000,
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    progress: undefined,
+  });
+};
+
+/**
+ * Show a success toast
+ * @param {string} message - The message to display
+ * @returns {string} - Toast ID
+ */
+export const showSuccess = (message) => {
+  return toast.success(message, {
+    position: "bottom-center",
+    autoClose: 5000,
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    progress: undefined,
+  });
+};
