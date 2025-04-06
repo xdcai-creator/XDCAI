@@ -415,6 +415,8 @@ export const transferSolanaToken = async ({
 export const executeTransfer = async (params) => {
   const { chain, token, amount } = params;
 
+  console.log("executing transfer with params ", params);
+
   // Validate input
   if (!chain || !token || !amount) {
     throw new Error("Missing required parameters: chain, token, amount");

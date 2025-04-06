@@ -9,6 +9,7 @@ import { XDCAIPresale2_ABI } from "../contracts/abis";
 import { CONTRACT_ADDRESSES } from "../contracts/contractAddresses";
 import { useContract } from "../hooks/useContract";
 import { MetamaskIcon, XDCClaimsPageIcon } from "./icons/CryptoIcons";
+import { contributionsApi } from "../services/api";
 
 // MetaMask mobile SDK is better for production, but for simplicity,
 // we'll use deep linking for mobile MetaMask interaction
@@ -34,6 +35,13 @@ export const ThankYouScreen = () => {
   const [userEmail, setUserEmail] = useState("");
   const [isMobile, setIsMobile] = useState(false);
   const [isClaimingTokens, setIsClaimingTokens] = useState(false);
+
+  //for setting XDC claim address
+  const [xdcAddressInput, setXdcAddressInput] = useState("");
+  const [isSubmittingXdcAddress, setIsSubmittingXdcAddress] = useState(false);
+  const [xdcAddressSubmitted, setXdcAddressSubmitted] = useState(false);
+  const [contributionId, setContributionId] = useState(null);
+  const [showXdcAddressForm, setShowXdcAddressForm] = useState(false);
 
   // Check device type and connection on component mount
   useEffect(() => {
@@ -70,6 +78,63 @@ export const ThankYouScreen = () => {
       setIsXdcConnected(false);
     }
   };
+
+  useEffect(() => {
+    const checkUserInfo = async () => {
+      if (!address) return;
+
+      try {
+        setIsCheckingEmail(true);
+
+        // Call the API to check if user has email and XDC claim address
+        const response = await contributionsApi.checkUserEmail(address);
+
+        if (response) {
+          if (response.email) {
+            setUserEmail(response.email);
+            setEmailSubmitted(true);
+
+            // Check for any contribution without XDC claim address
+            if (response.contributions && response.contributions.length > 0) {
+              const contributionWithoutXdcAddress = response.contributions.find(
+                (contribution) =>
+                  !contribution.xdcClaimAddress &&
+                  contribution.status !== "Claimed"
+              );
+
+              if (contributionWithoutXdcAddress) {
+                setContributionId(contributionWithoutXdcAddress._id);
+                setShowXdcAddressForm(true);
+                setXdcAddressSubmitted(false);
+              } else {
+                setXdcAddressSubmitted(true);
+              }
+            } else {
+              // No contributions found - shouldn't happen on thank you page
+              setXdcAddressSubmitted(true); // Skip XDC address form
+            }
+          } else {
+            setEmailSubmitted(false);
+            setShowXdcAddressForm(false);
+          }
+        } else {
+          // If user not found, we need to collect email
+          setEmailSubmitted(false);
+          setShowXdcAddressForm(false);
+        }
+      } catch (err) {
+        console.error("Error checking user info:", err);
+        setEmailSubmitted(false);
+        setShowXdcAddressForm(false);
+      } finally {
+        setIsCheckingEmail(false);
+      }
+    };
+
+    if (isConnected && address) {
+      checkUserInfo();
+    }
+  }, [address, isConnected]);
 
   // Load transaction details from localStorage
   useEffect(() => {
@@ -218,6 +283,38 @@ export const ThankYouScreen = () => {
       setIsXdcConnected(false);
     } finally {
       setIsConnecting(false);
+    }
+  };
+
+  const handleXdcAddressSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!isValidXdcAddress(xdcAddressInput)) {
+      setError("Please enter a valid XDC address (starts with xdc or 0x)");
+      return;
+    }
+
+    try {
+      setIsSubmittingXdcAddress(true);
+      setError(null);
+
+      // Update the XDC claim address using the API
+      await contributionsApi.updateClaimAddress(
+        contributionId,
+        xdcAddressInput
+      );
+
+      setXdcAddressSubmitted(true);
+      setShowXdcAddressForm(false);
+      toast.success("XDC claim address submitted successfully!");
+    } catch (error) {
+      setError(
+        error.response?.data?.error ||
+          error.message ||
+          "Failed to submit XDC address"
+      );
+    } finally {
+      setIsSubmittingXdcAddress(false);
     }
   };
 
@@ -429,6 +526,10 @@ export const ThankYouScreen = () => {
     }
   };
 
+  const isValidXdcAddress = (address) => {
+    return /^(xdc|0x)[a-fA-F0-9]{40}$/i.test(address);
+  };
+
   // Render email collection form if user doesn't have email
   if (isCheckingEmail) {
     return (
@@ -476,6 +577,47 @@ export const ThankYouScreen = () => {
               }`}
           >
             {isSubmittingEmail ? "Submitting..." : "Submit Email"}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  // XDC Address submission form
+  if (showXdcAddressForm && !xdcAddressSubmitted) {
+    return (
+      <div className="p-5">
+        <p className="text-white text-[#aaa] text-sm mb-4">
+          Please provide your XDC address to receive your XDCAI tokens
+        </p>
+
+        <form onSubmit={handleXdcAddressSubmit}>
+          <input
+            type="text"
+            value={xdcAddressInput}
+            onChange={(e) => setXdcAddressInput(e.target.value)}
+            placeholder="Enter XDC address (starts with xdc or 0x)"
+            className="w-full bg-[#1A1A1A] rounded-md border border-[#333333] p-3 text-white text-lg mb-4"
+            required
+          />
+
+          {error && (
+            <div className="bg-red-900/30 border border-red-500 rounded p-3 mb-4 text-red-400">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={isSubmittingXdcAddress || !xdcAddressInput}
+            className={`w-full py-3 rounded-md font-bold text-black
+            ${
+              isSubmittingXdcAddress || !xdcAddressInput
+                ? "bg-[#5a8f5a] cursor-not-allowed"
+                : "bg-[#00FA73] cursor-pointer hover:bg-[#00E066]"
+            }`}
+          >
+            {isSubmittingXdcAddress ? "Submitting..." : "Submit XDC Address"}
           </button>
         </form>
       </div>

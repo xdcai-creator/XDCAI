@@ -1,5 +1,6 @@
 // src/services/api.js
 import axios from "axios";
+import * as priceService from "./priceService";
 
 // Create base API client with common config
 const apiClient = axios.create({
@@ -101,14 +102,14 @@ export const contributionsApi = {
 export const priceApi = {
   // Get current market prices
   getCurrentPrices: async () => {
-    const response = await apiClient.get("/api/prices/current");
+    const response = await priceService.fetchCurrentPrices();
     return response.data;
   },
 
   // Get pre-purchase quote
   getPrepurchaseQuote: async (params) => {
-    const response = await apiClient.post("/api/prices/quote", params);
-    return response.data;
+    const response = await priceService.getPrepurchaseQuote(params);
+    return response;
   },
 };
 
@@ -195,6 +196,16 @@ export const adminApi = {
   },
 };
 
+// Contract API
+export const contractApi = {
+  getContractDetails: async (filters = {}) => {
+    const response = await apiClient.get(`/api/contract/details`, {
+      headers: authHeader(),
+    });
+    return response.data;
+  },
+};
+
 // Authentication helper functions
 export const authService = {
   isAuthenticated: () => {
@@ -227,4 +238,5 @@ export default {
   priceApi,
   adminApi,
   authService,
+  contractApi,
 };

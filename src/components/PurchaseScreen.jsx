@@ -13,24 +13,14 @@ import {
   handlePurchaseError,
   showInfo,
 } from "../utils/toastHandler";
-import {
-  formatTokenPrice,
-  formatTokenAmount,
-  calculateTimeUntilNextUpdate,
-} from "../utils/tokenUtils";
+import { calculateTimeUntilNextUpdate } from "../utils/tokenUtils";
 import {
   fetchCurrentPrices,
   getPrepurchaseQuote,
 } from "../services/priceService";
 import { getNativeCurrencySymbol, formatAddress } from "../utils/chainUtils";
 
-import {
-  registerTransactionIntent,
-  storeIntentId,
-  getStoredIntentId,
-  getIntentStatus,
-  clearStoredIntentId,
-} from "../services/transactionIntentService";
+import { clearStoredIntentId } from "../services/transactionIntentService";
 import { showWarning } from "../utils/toastHandler";
 
 import * as Icons from "./icons/CryptoIcons";
@@ -39,6 +29,8 @@ import BridgeIcon from "./icons/BridgeIcon";
 import { executeTransfer } from "../services/transferService";
 import { useWallet as useSolanaWallet } from "@solana/wallet-adapter-react";
 import { Connection } from "@solana/web3.js";
+
+import networkConfig from "../utils/networkConfig";
 
 export const PurchaseScreen = ({
   selectedCurrency,
@@ -55,6 +47,7 @@ export const PurchaseScreen = ({
   registerIntent,
   purchaseError,
   setPurchaseError, // Setter for currency selection
+  contractDetails,
 }) => {
   const navigate = useNavigate();
   let solanaWallet = useSolanaWallet();
@@ -79,7 +72,7 @@ export const PurchaseScreen = ({
   // Local state for transaction status
   const [error, setError] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [tokenPrice, setTokenPrice] = useState(null);
+  // const [tokenPrice, setTokenPrice] = useState(null);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
   const [updateInterval, setUpdateInterval] = useState(null);
   const [nextPriceIncrease, setNextPriceIncrease] = useState({
@@ -96,6 +89,8 @@ export const PurchaseScreen = ({
   const [currentMarketPrices, setCurrentMarketPrices] = useState({});
   const [purchaseQuote, setPurchaseQuote] = useState(null);
   const [isGeneratingQuote, setIsGeneratingQuote] = useState(false);
+
+  const tokenPrice = contractDetails?.tokenPriceUSD || 0.002;
 
   const [activeTab, setActiveTab] = useState("ALL");
 
@@ -153,16 +148,6 @@ export const PurchaseScreen = ({
   //  }, 1000 * 60) //every 1 minute
   // },[])
 
-  //check for existing intent on component mount
-  useEffect(() => {
-    const storedIntentId = getStoredIntentId();
-    if (storedIntentId) {
-      setIntentId(storedIntentId);
-      // Check the status of the stored intent
-      checkIntentStatus(storedIntentId);
-    }
-  }, []);
-
   // useEffect to handle the countdown timer for intent expiration
   useEffect(() => {
     if (!intentExpiry) return;
@@ -178,7 +163,6 @@ export const PurchaseScreen = ({
         clearInterval(countdownInterval);
         setIntentStatus("EXPIRED");
         clearStoredIntentId();
-        setIntentId(null);
         showWarning("Transaction time window expired. Please try again.");
       }
     }, 1000);
@@ -211,59 +195,6 @@ export const PurchaseScreen = ({
       return updatedCoinData;
     }
   }, [coinPrices]);
-
-  // Fetch contract info and market prices when contract is loaded
-  useEffect(() => {
-    const fetchContractInfo = async () => {
-      try {
-        if (presaleContract && !presaleLoading) {
-          // setIsLoadingPrice(true);
-
-          // Get current token price
-          const price = await presaleContract.tokenPriceUSD();
-          setTokenPrice(price.toString());
-
-          // Get last update time and update interval
-          const lastUpdateTimeValue =
-            await presaleContract.lastPriceUpdateTime();
-          setLastUpdateTime(lastUpdateTimeValue.toString());
-
-          const updateIntervalValue =
-            await presaleContract.PRICE_UPDATE_INTERVAL();
-          setUpdateInterval(updateIntervalValue.toString());
-
-          // Check token contract balance
-          // const contractBalance = await tokenContract?.balanceOf(
-          //   presaleContract.address
-          // );
-          // console.log(
-          //   "Contract XDCAI balance:",
-          //   ethers.utils.formatUnits(contractBalance, 18)
-          // );
-        }
-
-        if (tokenContract && !tokenLoading) {
-          const symbol = await tokenContract.symbol();
-          setTokenSymbol(symbol);
-
-          const decimals = await tokenContract.decimals();
-          setTokenDecimals(decimals);
-        }
-
-        // Fetch current market prices
-        // const marketPrices = await fetchCurrentPrices();
-        // setCurrentMarketPrices(marketPrices);
-        // setCoinPrices(marketPrices);
-      } catch (err) {
-        console.error("Error fetching contract info:", err);
-        // setError("Error fetching contract information. Please try again.");
-      } finally {
-        // setIsLoadingPrice(false);
-      }
-    };
-
-    fetchContractInfo();
-  }, [presaleContract, presaleLoading, tokenContract, tokenLoading]);
 
   // Update next price increase timer
   useEffect(() => {
@@ -315,7 +246,7 @@ export const PurchaseScreen = ({
       }
 
       setIsGeneratingQuote(true);
-      const tokenPriceInUsd = parseFloat(formatTokenAmount(tokenPrice));
+      const tokenPriceInUsd = tokenPrice;
       //
       const quote = await getPrepurchaseQuote({
         symbol: selectedCurrency,
@@ -330,50 +261,6 @@ export const PurchaseScreen = ({
       console.error("Error generating purchase quote:", err);
     } finally {
       setIsGeneratingQuote(false);
-    }
-  };
-
-  // Fetch current market prices
-  const refreshMarketPrices = async () => {
-    try {
-      setIsLoadingPrice(true);
-      const prices = await fetchCurrentPrices();
-      setCurrentMarketPrices(prices);
-      setCoinPrices(prices);
-
-      // Regenerate purchase quote with new prices
-      if (ethAmount && parseFloat(ethAmount) > 0) {
-        await generatePurchaseQuote();
-      }
-    } catch (err) {
-      console.error("Error refreshing market prices:", err);
-    } finally {
-      setIsLoadingPrice(false);
-    }
-  };
-
-  const checkIntentStatus = async (id) => {
-    try {
-      const result = await getIntentStatus(id);
-      setIntentStatus(result.status);
-      setIntentExpiry(result.expiresAt);
-
-      // If the intent is already expired or verified, clear it
-      if (result.status === "EXPIRED") {
-        clearStoredIntentId();
-        setIntentId(null);
-        showWarning(
-          "Previous transaction time window expired. Please try again."
-        );
-      } else if (result.status === "VERIFIED") {
-        // Intent was verified, show success message
-        showSuccess("Your transaction was verified successfully!");
-      }
-    } catch (error) {
-      console.error("Error checking intent status:", error);
-      // Clear invalid intent
-      clearStoredIntentId();
-      setIntentId(null);
     }
   };
 
@@ -547,7 +434,10 @@ export const PurchaseScreen = ({
         // Determine the chain based on selected currency
         if (selectedCurrency === "ETH") {
           chain = "ethereum";
-        } else if (selectedCurrency === "BNB") {
+        } else if (
+          selectedCurrency === "BNB" ||
+          selectedCurrency.includes("-BNB")
+        ) {
           chain = "bsc";
         } else if (
           selectedCurrency === "SOL" ||
@@ -557,9 +447,7 @@ export const PurchaseScreen = ({
 
           // For Solana, we need to initialize the connection
           // Use the appropriate RPC URL based on environment
-          const solanaRpcUrl =
-            import.meta.env.VITE_SOLANA_RPC_URL ||
-            "https://api.devnet.solana.com";
+          const solanaRpcUrl = networkConfig.rpcEndpoints.solana.http;
           solanaConnection = new Connection(solanaRpcUrl);
 
           // Get the Solana wallet from context
@@ -597,6 +485,7 @@ export const PurchaseScreen = ({
             }
 
             try {
+              console.log("prompt user to select correct chain");
               const network = await provider.getNetwork();
               if (network.chainId !== requiredChainId) {
                 // Request user to switch networks
@@ -621,7 +510,7 @@ export const PurchaseScreen = ({
                           symbol: "BNB",
                           decimals: 18,
                         },
-                        rpcUrls: ["https://bsc-dataseed.binance.org/"],
+                        rpcUrls: [networkConfig.rpcEndpoints.bsc.http],
                         blockExplorerUrls: ["https://bscscan.com/"],
                       };
                     } else {
@@ -634,7 +523,7 @@ export const PurchaseScreen = ({
                           symbol: "ETH",
                           decimals: 18,
                         },
-                        rpcUrls: ["https://mainnet.infura.io/v3/"],
+                        rpcUrls: [networkConfig.rpcEndpoints.ethereum.http],
                         blockExplorerUrls: ["https://etherscan.io/"],
                       };
                     }
@@ -695,6 +584,8 @@ export const PurchaseScreen = ({
             return;
           }
         }
+
+        console.log("chain ", chain);
 
         // Execute the transfer
         try {
@@ -998,7 +889,7 @@ export const PurchaseScreen = ({
 
     // Calculate base XDCAI tokens (without bonus)
     // We need to convert USD value to XDCAI tokens using the token price
-    const tokenPriceInUsd = parseFloat(formatTokenAmount(tokenPrice));
+    const tokenPriceInUsd = tokenPrice;
     const baseTokens = usdValue / tokenPriceInUsd;
 
     // Calculate bonus tokens (same as contract does)
@@ -1222,8 +1113,7 @@ export const PurchaseScreen = ({
                 color: "#aaa",
               }}
             >
-              1 ${tokenSymbol} ={" "}
-              {isLoadingPrice ? "Loading..." : formatTokenPrice(tokenPrice)}
+              1 ${tokenSymbol} = {isLoadingPrice ? "Loading..." : tokenPrice}
             </p>
           </div>
 

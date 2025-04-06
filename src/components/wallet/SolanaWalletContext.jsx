@@ -15,7 +15,7 @@ export const SolanaWalletProvider = ({ children }) => {
 
   // Get RPC endpoint from environment or fallback to default
   const rpcEndpoint =
-    import.meta.env.VITE_SOLANA_RPC_URL || "https://api.devnet.solana.com";
+    import.meta.env.VITE_SOLANA_PROVIDER_URL || "https://api.devnet.solana.com";
 
   // Create a Connection instance
   const connection = useMemo(() => new Connection(rpcEndpoint), [rpcEndpoint]);

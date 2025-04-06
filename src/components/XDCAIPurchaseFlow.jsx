@@ -19,7 +19,7 @@ import { ClaimScreen } from "./ClaimScreen";
 import ProtectedRoute from "./ProtectedRoute";
 
 // Import services
-import { priceApi } from "../services/api";
+import { contractApi } from "../services/api";
 import {
   fetchCurrentPrices,
   getPrepurchaseQuote,
@@ -46,6 +46,7 @@ const XDCAIPurchaseFlow = () => {
   const [tokenPrice, setTokenPrice] = useState(null);
   const [intentId, setIntentId] = useState(null);
   const [purchaseError, setPurchaseError] = useState(null);
+  const [contractDetails, setContractDetails] = useState(null);
 
   // Initialize account when wallet is connected
   useEffect(() => {
@@ -66,6 +67,19 @@ const XDCAIPurchaseFlow = () => {
     return () => clearInterval(refreshInterval);
   }, []);
 
+  //get contract details
+  useEffect(() => {
+    if (!contractDetails) {
+      const details = (async () => {
+        const res = await contractApi.getContractDetails();
+
+        if (res?.data) {
+          setContractDetails(res.data);
+        }
+      })();
+    }
+  }, []);
+
   // Check for existing transaction intent
   useEffect(() => {
     const storedIntentId = getStoredIntentId();
@@ -80,6 +94,7 @@ const XDCAIPurchaseFlow = () => {
     try {
       setIsLoadingPrices(true);
       const prices = await fetchCurrentPrices();
+
       setMarketPrices(prices);
 
       // Fetch XDCAI token price
@@ -227,6 +242,7 @@ const XDCAIPurchaseFlow = () => {
                     registerIntent={registerIntent}
                     purchaseError={purchaseError}
                     setPurchaseError={setPurchaseError}
+                    contractDetails={contractDetails}
                   />
                 </ProtectedRoute>
               }

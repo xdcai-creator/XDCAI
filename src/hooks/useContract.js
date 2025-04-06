@@ -1,24 +1,31 @@
-// src/hooks/useContract.js
 import { useState, useEffect } from "react";
-import { ethers } from "ethers"; // Using v5.7.2 as specified in package.json
+import { ethers } from "ethers";
 import { useAccount } from "wagmi";
-import { CONTRACT_ADDRESSES, NETWORKS } from "../contracts/contractAddresses";
+import { useNetwork } from "../context/NetworkContext";
 import { XDCAIPresale2_ABI, XDCAIToken_ABI } from "../contracts/abis";
+import networkConfig from "../config/networkConfig";
+
+// Map of contract names to ABIs
+const CONTRACT_ABIS = {
+  XDCAIPresale2: XDCAIPresale2_ABI,
+  XDCAIToken: XDCAIToken_ABI,
+};
 
 /**
  * Custom hook to interact with smart contracts
  * @param {string} contractName - The name of the contract to interact with
- * @returns {Object} - Contract instance and loading state
+ * @returns {Object} - Contract instance and status
  */
 export const useContract = (contractName) => {
   const [contract, setContract] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { isConnected } = useAccount();
+  const { isXdcConnected, isTestnet } = useNetwork();
 
   useEffect(() => {
     const initContract = async () => {
-      if (!isConnected) {
+      if (!isConnected || !isXdcConnected) {
         setContract(null);
         setLoading(false);
         return;
@@ -33,43 +40,41 @@ export const useContract = (contractName) => {
           throw new Error("Please install MetaMask or another Ethereum wallet");
         }
 
-        // Create a provider and get the current chain ID
+        // Create a provider and signer
         const provider = new ethers.providers.Web3Provider(window.ethereum);
-        const network = await provider.getNetwork();
-        const chainId = network.chainId;
+        const signer = provider.getSigner();
 
-        // Get contract address for current network
-        const contractAddresses = CONTRACT_ADDRESSES[chainId.toString()];
-        if (!contractAddresses) {
-          throw new Error(`Unsupported network: ${chainId}`);
+        // Get contract address based on testnet/mainnet status
+        let contractAddress;
+        if (contractName === "XDCAIPresale2") {
+          contractAddress = networkConfig.contracts.xdcaiPresale;
+        } else if (contractName === "XDCAIToken") {
+          contractAddress = networkConfig.contracts.xdcaiToken;
+        } else {
+          throw new Error(`Unknown contract name: ${contractName}`);
         }
 
-        const address = contractAddresses[contractName];
         if (
-          !address ||
-          address === "0x0000000000000000000000000000000000000000"
+          !contractAddress ||
+          contractAddress === "0x0000000000000000000000000000000000000000"
         ) {
           throw new Error(
-            `Contract ${contractName} not deployed on network ${chainId}`
+            `Contract ${contractName} not deployed on this network`
           );
         }
 
         // Get the appropriate ABI
-        let abi;
-        switch (contractName) {
-          case "XDCAIPresale2":
-            abi = XDCAIPresale2_ABI;
-            break;
-          case "XDCAIToken":
-            abi = XDCAIToken_ABI;
-            break;
-          default:
-            throw new Error(`Unknown contract name: ${contractName}`);
+        const abi = CONTRACT_ABIS[contractName];
+        if (!abi) {
+          throw new Error(`ABI not found for contract ${contractName}`);
         }
 
-        // Create and return contract instance
-        const signer = provider.getSigner();
-        const contractInstance = new ethers.Contract(address, abi, signer);
+        // Create contract instance
+        const contractInstance = new ethers.Contract(
+          contractAddress,
+          abi,
+          signer
+        );
         setContract(contractInstance);
       } catch (err) {
         console.error("Error initializing contract:", err);
@@ -81,30 +86,27 @@ export const useContract = (contractName) => {
 
     initContract();
 
-    // Listen for chain changes and reinitialize the contract
-    const handleChainChanged = () => {
+    // Listen for network and account changes
+    const handleNetworkChange = () => {
       initContract();
     };
 
-    const handleAccountsChanged = () => {
+    const handleAccountChange = () => {
       initContract();
     };
 
     if (window.ethereum) {
-      window.ethereum.on("chainChanged", handleChainChanged);
-      window.ethereum.on("accountsChanged", handleAccountsChanged);
+      window.ethereum.on("chainChanged", handleNetworkChange);
+      window.ethereum.on("accountsChanged", handleAccountChange);
     }
 
     return () => {
       if (window.ethereum) {
-        window.ethereum.removeListener("chainChanged", handleChainChanged);
-        window.ethereum.removeListener(
-          "accountsChanged",
-          handleAccountsChanged
-        );
+        window.ethereum.removeListener("chainChanged", handleNetworkChange);
+        window.ethereum.removeListener("accountsChanged", handleAccountChange);
       }
     };
-  }, [contractName, isConnected]);
+  }, [contractName, isConnected, isXdcConnected, isTestnet]);
 
   return { contract, loading, error };
 };

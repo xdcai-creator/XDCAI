@@ -42,7 +42,7 @@ function App() {
 
   // Get Solana network endpoint from environment or default to devnet
   const endpoint = useMemo(() => {
-    return import.meta.env.VITE_SOLANA_RPC_URL || clusterApiUrl("devnet");
+    return import.meta.env.VITE_SOLANA_PROVIDER_URL || clusterApiUrl("devnet");
   }, []);
 
   return (
