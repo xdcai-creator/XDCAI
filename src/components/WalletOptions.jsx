@@ -4,12 +4,17 @@ import { useNavigate } from "react-router-dom";
 import { useConnect } from "wagmi";
 import { WalletOption } from "./WalletOption";
 
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { PhantomIcon } from "./icons";
+import { useWallet as useSolanaWallet } from "@solana/wallet-adapter-react";
+
 export function WalletOptions({ setSelectedWallet, onError, walletDetectors }) {
   const navigate = useNavigate();
   const { connectors, connect, isPending, error } = useConnect();
   const [pendingConnector, setPendingConnector] = useState(null);
   const [availableConnectors, setAvailableConnectors] = useState([]);
   const [connectionAttempts, setConnectionAttempts] = useState(0);
+  const solanaWallet = useSolanaWallet();
 
   // Manually create our wallet list based on available connectors
   useEffect(() => {
@@ -144,7 +149,7 @@ export function WalletOptions({ setSelectedWallet, onError, walletDetectors }) {
       style={{
         maxWidth: "600px",
         margin: "0 auto",
-        padding: "0px 20px",
+        padding: "30px 20px",
         backgroundColor: "#0c0c0c",
         color: "white",
         borderRadius: "12px",
@@ -206,6 +211,7 @@ export function WalletOptions({ setSelectedWallet, onError, walletDetectors }) {
           display: "flex",
           flexDirection: "column",
           width: "100%",
+          marginBottom: 20,
           maxWidth: "520px",
         }}
       >
@@ -225,6 +231,50 @@ export function WalletOptions({ setSelectedWallet, onError, walletDetectors }) {
             installed.
           </p>
         )}
+
+        <div className=" flex justify-center !w-full">
+          <WalletMultiButton
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "15px 20px",
+              backgroundColor: "#112211",
+              border: false ? "1px solid #00FA73" : "1px solid #303030",
+              borderRadius: "10px",
+              color: "white",
+              fontSize: "18px",
+              fontWeight: "500",
+              cursor: isPending ? "not-allowed" : "pointer",
+              transition: "background-color 0.2s, border-color 0.2s",
+              opacity: isPending ? 0.6 : 1,
+              width: "100%",
+              marginBottom: "10px",
+              minHeight: 60,
+            }}
+          >
+            <span>Phantom </span>
+            {false ? ( //TODO - implement loading later
+              <div
+                className="spinner"
+                style={{
+                  width: "20px",
+                  height: "20px",
+                  borderRadius: "50%",
+                  border: "2px solid #00FA73",
+                  borderTopColor: "transparent",
+                  animation: "spin 1s linear infinite",
+                }}
+              />
+            ) : solanaWallet.connected ? (
+              <div className="text-gray-500 text-xs">Connected</div>
+            ) : (
+              <div style={{ width: "30px", height: "30px" }}>
+                <PhantomIcon />
+              </div>
+            )}
+          </WalletMultiButton>
+        </div>
       </div>
 
       {/* Show error if any */}

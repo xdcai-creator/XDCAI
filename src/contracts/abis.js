@@ -43,6 +43,20 @@ export const XDCAIPresale2_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  //by contract owner
+  {
+    inputs: [
+      {
+        internalType: "address",
+        name: "_user",
+        type: "address",
+      },
+    ],
+    name: "claimTokensFor",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
   {
     inputs: [{ internalType: "address", name: "_user", type: "address" }],
     name: "getClaimableAmount",
@@ -59,6 +73,13 @@ export const XDCAIPresale2_ABI = [
       { internalType: "uint256", name: "vestedAmount", type: "uint256" },
       { internalType: "uint256", name: "nextUnlockTime", type: "uint256" },
     ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "owner",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
     stateMutability: "view",
     type: "function",
   },

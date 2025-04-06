@@ -2,12 +2,14 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAccount } from "wagmi";
+import { useSolanaWallet } from "./wallet/SolanaWalletContext";
 
 const ProtectedRoute = ({ children }) => {
   const { isConnected } = useAccount();
+  let solanaWallet = useSolanaWallet();
 
-  // If wallet is not connected, redirect to connect wallet page
-  if (!isConnected) {
+  // Redirect only if BOTH are false
+  if (!isConnected && !solanaWallet.connected) {
     return <Navigate to="/connect" replace />;
   }
 

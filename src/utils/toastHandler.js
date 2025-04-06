@@ -29,6 +29,7 @@ const errorMessageMap = {
     "Insufficient funds in your wallet to complete this transaction.",
   "MetaMask - RPC Error":
     "Network connection issue. Please check your wallet connection and try again.",
+  "Intent failed": "Payment Quote not received",
 };
 
 /**

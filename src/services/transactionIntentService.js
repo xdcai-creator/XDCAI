@@ -1,5 +1,5 @@
 // src/services/transactionIntentService.js
-import { VITE_API_URL } from "../config";
+import { transactionIntentApi } from "./api";
 
 /**
  * Register a transaction intent before payment
@@ -12,25 +12,12 @@ import { VITE_API_URL } from "../config";
  */
 export const registerTransactionIntent = async (params) => {
   try {
-    const response = await fetch(
-      `${VITE_API_URL}/api/transaction-intents/register`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(params),
-      }
-    );
+    const result = await transactionIntentApi.register(params);
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        errorData.error || "Failed to register transaction intent"
-      );
-    }
+    // Store intent ID in localStorage
+    storeIntentId(result.intentId);
 
-    return await response.json();
+    return result;
   } catch (error) {
     console.error("Error registering transaction intent:", error);
     throw error;
@@ -44,16 +31,7 @@ export const registerTransactionIntent = async (params) => {
  */
 export const getIntentStatus = async (intentId) => {
   try {
-    const response = await fetch(
-      `${VITE_API_URL}/api/transaction-intents/status/${intentId}`
-    );
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to get intent status");
-    }
-
-    return await response.json();
+    return await transactionIntentApi.getStatus(intentId);
   } catch (error) {
     console.error("Error getting intent status:", error);
     throw error;
@@ -81,4 +59,44 @@ export const getStoredIntentId = () => {
  */
 export const clearStoredIntentId = () => {
   localStorage.removeItem("xdcai_payment_intent");
+};
+
+/**
+ * Verify if a transaction succeeded by checking the intent status
+ * @param {string} intentId - The intent ID to verify
+ * @param {number} maxAttempts - Maximum number of status checks
+ * @param {number} interval - Interval between checks in ms
+ * @returns {Promise<Object>} - Final intent status
+ */
+export const verifyTransactionSuccess = async (
+  intentId,
+  maxAttempts = 10,
+  interval = 3000
+) => {
+  let attempts = 0;
+
+  while (attempts < maxAttempts) {
+    const status = await getIntentStatus(intentId);
+
+    // If the intent is verified or expired, we're done
+    if (status.status === "VERIFIED" || status.status === "EXPIRED") {
+      return status;
+    }
+
+    // Wait before trying again
+    await new Promise((resolve) => setTimeout(resolve, interval));
+    attempts++;
+  }
+
+  // If we reach here, we've exceeded maximum attempts
+  throw new Error("Transaction verification timed out");
+};
+
+export default {
+  registerTransactionIntent,
+  getIntentStatus,
+  storeIntentId,
+  getStoredIntentId,
+  clearStoredIntentId,
+  verifyTransactionSuccess,
 };

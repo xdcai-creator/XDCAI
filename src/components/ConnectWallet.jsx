@@ -1,19 +1,24 @@
 // src/components/ConnectWallet.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAccount } from "wagmi";
+import { useAccount, useConnect as useWagmiConnect } from "wagmi";
 import { WalletOptions } from "./WalletOptions";
-import { SolanaWalletProvider } from "./SolanaWalletProvider";
-import { SolanaConnectButton } from "./SolanaWalletProvider";
-import { SolanaSendToken } from "./SolanaSendToken";
-import { PhantomIcon } from "./icons";
+import { useWallet as useSolanaWallet } from "@solana/wallet-adapter-react";
 
-export function ConnectWallet({ setAccount, onTestSolanaConnect }) {
+export function ConnectWallet({ setAccount }) {
   const navigate = useNavigate();
   const { isConnected, address } = useAccount();
+  const solanaWallet = useSolanaWallet();
   const [selectedWallet, setSelectedWallet] = useState(null);
-  const [showTest, setShowTest] = useState(false);
   const [error, setError] = useState(null);
+  const [activeBlockchain, setActiveBlockchain] = useState("evm"); // "evm" or "solana"
+
+  // Use a ref to track if we've already navigated for this connection session
+  const hasNavigatedRef = useRef(false);
+
+  useEffect(() => {
+    hasNavigatedRef.current = false;
+  }, [location.pathname]);
 
   // Define wallet detector functions
   const walletDetectors = {
@@ -41,130 +46,45 @@ export function ConnectWallet({ setAccount, onTestSolanaConnect }) {
   // Update the app's account state when the wallet is connected
   useEffect(() => {
     if (isConnected && address) {
-      // Automatically proceed to purchase screen when connected
-      navigate("/purchase");
+      setAccount(address);
+      // Automatically proceed to purchase screen when connected to EVM wallet
+      if (!hasNavigatedRef.current && location.pathname === "/connect") {
+        hasNavigatedRef.current = true;
+        navigate("/purchase");
+      }
     }
-  }, [isConnected, address, navigate]);
+  }, [isConnected, address, navigate, setAccount]);
 
-  // Handle test Solana wallet connection
-  const handleTestSolanaConnect = async () => {
-    try {
-      // Simulate wallet connection
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      navigate("/purchase");
-    } catch (error) {
-      console.error("Test Solana connection error:", error);
-      setError(error.message);
+  // Listen for Solana wallet connection changes
+  useEffect(() => {
+    if (solanaWallet.connected && solanaWallet.publicKey) {
+      setAccount(solanaWallet.publicKey.toString());
+      // Automatically proceed to purchase screen when connected to Solana wallet
+      if (!hasNavigatedRef.current && location.pathname === "/connect") {
+        hasNavigatedRef.current = true;
+        navigate("/purchase");
+      }
     }
-  };
+  }, [solanaWallet.connected, solanaWallet.publicKey, navigate, setAccount]);
 
-  // Handle test interface toggle
-  const handleTestInterfaceToggle = () => {
-    if (showTest) {
-      // When going back to wallet options, reset the test state
-      setSelectedWallet(null);
-      setError(null);
-    }
-    setShowTest(!showTest);
-  };
+  // Toggle between EVM and Solana wallets
 
-  return showTest ? (
-    <SolanaWalletProvider>
-      <div style={{ padding: "20px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
-          }}
-        >
-          <SolanaConnectButton />
-          <button
-            onClick={handleTestInterfaceToggle}
-            style={{
-              padding: "10px 15px",
-              backgroundColor: "#6B7280",
-              color: "white",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-            }}
-          >
-            Back to Wallet Connector
-          </button>
+  return (
+    <div className="">
+      <div className="solana-wallets flex flex-col items-center">
+        <div className="w-full max-w-md ">
+          <WalletOptions
+            setSelectedWallet={setSelectedWallet}
+            onError={setError}
+            walletDetectors={walletDetectors}
+          />
         </div>
-        <SolanaSendToken />
-        {error && (
-          <div
-            style={{
-              padding: "10px",
-              backgroundColor: "rgba(255, 0, 0, 0.1)",
-              color: "red",
-              borderRadius: "5px",
-              marginTop: "10px",
-            }}
-          >
-            {error}
-          </div>
-        )}
       </div>
-    </SolanaWalletProvider>
-  ) : (
-    <div>
-      <WalletOptions
-        setSelectedWallet={setSelectedWallet}
-        onTestSolanaConnect={handleTestSolanaConnect}
-        onError={setError}
-        walletDetectors={walletDetectors}
-      />
       {error && (
-        <div
-          style={{
-            padding: "10px",
-            backgroundColor: "rgba(255, 0, 0, 0.1)",
-            color: "red",
-            borderRadius: "5px",
-            marginTop: "10px",
-          }}
-        >
+        <div className="mt-4 p-3 bg-accent-red/20 border border-accent-red rounded-md text-accent-red">
           {error}
         </div>
       )}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          marginTop: "2px",
-          padding: "0 20px",
-        }}
-      >
-        <button
-          onClick={handleTestInterfaceToggle}
-          style={{
-            width: "100%",
-            maxWidth: "520px",
-            padding: "15px 20px",
-            backgroundColor: "#112211",
-            border: "1px solid #303030",
-            borderRadius: "10px",
-            color: "white",
-            fontSize: "18px",
-            fontWeight: "500",
-            cursor: "pointer",
-            transition: "background-color 0.2s, border-color 0.2s",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "10px",
-          }}
-        >
-          <span>Phantom Wallet </span>
-          <div style={{ width: "30px", height: "30px" }}>
-            <PhantomIcon />
-          </div>
-        </button>
-      </div>
     </div>
   );
 }
