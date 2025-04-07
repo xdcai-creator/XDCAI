@@ -15,30 +15,30 @@ const ContributionsTable = ({
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full bg-dark-lighter border border-dark-lighter shadow-md rounded-md">
-        <thead className="bg-dark-darker">
+        <thead className="bg-[#425152]">
           <tr>
-            <th className="py-2 px-4 border-b border-dark-darker text-left text-gray-light">
+            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
               ID
             </th>
-            <th className="py-2 px-4 border-b border-dark-darker text-left text-gray-light">
+            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
               Source
             </th>
-            <th className="py-2 px-4 border-b border-dark-darker text-left text-gray-light">
+            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
               Amount
             </th>
-            <th className="py-2 px-4 border-b border-dark-darker text-left text-gray-light">
+            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
               Status
             </th>
-            <th className="py-2 px-4 border-b border-dark-darker text-left text-gray-light">
+            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
               XDC Address
             </th>
-            <th className="py-2 px-4 border-b border-dark-darker text-left text-gray-light">
+            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
               Created
             </th>
-            <th className="py-2 px-4 border-b border-dark-darker text-left text-gray-light">
+            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
               Last Updated
             </th>
-            <th className="py-2 px-4 border-b border-dark-darker text-left text-gray-light">
+            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
               Actions
             </th>
           </tr>
@@ -54,18 +54,18 @@ const ContributionsTable = ({
             contributions.map((contribution) => (
               <tr key={contribution._id} className="hover:bg-dark-lighter">
                 <td
-                  className="py-2 px-4 border-b border-dark-darker cursor-pointer text-primary hover:text-primary-light"
+                  className="py-2 px-4 border-b border-[#425152] cursor-pointer text-primary hover:text-primary-light"
                   onClick={() => onViewDetails(contribution)}
                 >
                   {contribution._id.substring(0, 8)}...
                 </td>
-                <td className="py-2 px-4 border-b border-dark-darker">
+                <td className="py-2 px-4 border-b border-[#425152]">
                   <div className="text-white">{contribution.sourceChain}</div>
                   <div className="text-xs text-gray-light">
                     {contribution.sourceToken}
                   </div>
                 </td>
-                <td className="py-2 px-4 border-b border-dark-darker">
+                <td className="py-2 px-4 border-b border-[#425152]">
                   <div className="text-white">
                     {formatAmount(
                       contribution.amount,
@@ -76,19 +76,19 @@ const ContributionsTable = ({
                     ${contribution.usdValue}
                   </div>
                 </td>
-                <td className="py-2 px-4 border-b border-dark-darker">
+                <td className="py-2 px-4 border-b border-[#425152]">
                   <StatusBadge status={contribution.status} />
                 </td>
-                <td className="py-2 px-4 border-b border-dark-darker text-xs text-white">
+                <td className="py-2 px-4 border-b border-[#425152] text-xs text-white">
                   {formatAddress(contribution.xdcClaimAddress)}
                 </td>
-                <td className="py-2 px-4 border-b border-dark-darker text-xs text-white">
+                <td className="py-2 px-4 border-b border-[#425152] text-xs text-white">
                   {new Date(contribution.createdAt).toLocaleString()}
                 </td>
-                <td className="py-2 px-4 border-b border-dark-darker text-xs text-white">
+                <td className="py-2 px-4 border-b border-[#425152] text-xs text-white">
                   {new Date(contribution.updatedAt).toLocaleString()}
                 </td>
-                <td className="py-2 px-4 border-b border-dark-darker">
+                <td className="py-2 px-4 border-b border-[#425152]">
                   <div className="flex space-x-2">
                     <button
                       className="bg-primary hover:bg-primary-light text-dark px-2 py-1 rounded text-xs"
@@ -146,41 +146,41 @@ const isRetryable = (status) => {
 
 // Status badge component
 const StatusBadge = ({ status }) => {
-  let bgColor = "bg-gray-dark";
+  let bgColor = "bg-gray-700";
   let textColor = "text-white";
 
   switch (status) {
     case "Detected":
-      bgColor = "bg-accent-blue/20";
-      textColor = "text-accent-blue";
+      bgColor = "bg-[#1da1f2]/20";
+      textColor = "text-[#1da1f2]";
       break;
     case "Pending Swap":
     case "Pending Bridge":
-      bgColor = "bg-secondary/20";
-      textColor = "text-secondary";
+      bgColor = "bg-[#F3BA2F]/20";
+      textColor = "text-[#F3BA2F]";
       break;
     case "Swapped":
     case "Bridged":
-      bgColor = "bg-primary/20";
-      textColor = "text-primary";
+      bgColor = "bg-[#00FA73]/20";
+      textColor = "text-[#00FA73]";
       break;
     case "Bridging":
-      bgColor = "bg-accent-purple/20";
-      textColor = "text-accent-purple";
+      bgColor = "bg-[#9945FF]/20";
+      textColor = "text-[#9945FF]";
       break;
     case "Swap Failed":
     case "Bridge Failed":
     case "Failed":
-      bgColor = "bg-accent-red/20";
-      textColor = "text-accent-red";
+      bgColor = "bg-[#ff4c4c]/20";
+      textColor = "text-[#ff4c4c]";
       break;
     case "Claimable":
-      bgColor = "bg-secondary-dark/20";
-      textColor = "text-secondary-dark";
+      bgColor = "bg-[#F3BA2F]/30";
+      textColor = "text-[#F3BA2F]";
       break;
     case "Claimed":
-      bgColor = "bg-primary/30";
-      textColor = "text-primary";
+      bgColor = "bg-[#00FA73]/30";
+      textColor = "text-[#00FA73]";
       break;
     default:
       break;
@@ -197,6 +197,7 @@ const StatusBadge = ({ status }) => {
 
 // Main dashboard component
 const ContributionsDashboard = () => {
+  const navigate = useNavigate();
   const [contributions, setContributions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -205,12 +206,13 @@ const ContributionsDashboard = () => {
   const [chainFilter, setChainFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [isOwner, setIsOwner] = useState(false);
+  const [sortField, setSortField] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState("desc");
   const [pagination, setPagination] = useState({
     total: 0,
     limit: 20,
     skip: 0,
   });
-  const navigate = useNavigate();
 
   // Status filter options
   const statusOptions = [
@@ -235,6 +237,14 @@ const ContributionsDashboard = () => {
     { value: "bsc", label: "BSC" },
     { value: "solana", label: "Solana" },
     { value: "xdc", label: "XDC" },
+  ];
+
+  // Sort options
+  const sortOptions = [
+    { value: "createdAt", label: "Created Date" },
+    { value: "updatedAt", label: "Updated Date" },
+    { value: "usdValue", label: "USD Value" },
+    { value: "status", label: "Status" },
   ];
 
   // Check authentication on component mount
@@ -266,26 +276,29 @@ const ContributionsDashboard = () => {
     }
   };
 
-  // Fetch contributions from the API
+  // Fetch contributions from the API using the new robust filtering
   const fetchContributions = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const filters = {
+      // Build filter options
+      const filterOptions = {
         limit: pagination.limit,
         skip: pagination.skip,
+        sort: sortField,
+        order: sortOrder,
         status: statusFilter !== "all" ? statusFilter : undefined,
         chain: chainFilter !== "all" ? chainFilter : undefined,
         search: searchQuery || undefined,
       };
 
-      const response = await adminApi.getContributions(filters);
+      const response = await adminApi.getContributions(filterOptions);
 
-      setContributions(response.contributions);
+      setContributions(response.contributions || []);
       setPagination({
         ...pagination,
-        total: response.pagination.total,
+        total: response.pagination?.total || 0,
       });
     } catch (err) {
       console.error("Error fetching contributions:", err);
@@ -304,11 +317,23 @@ const ContributionsDashboard = () => {
   // Load contributions on initial render and when filters change
   useEffect(() => {
     fetchContributions();
-  }, [statusFilter, chainFilter, pagination.skip, pagination.limit]);
+  }, [
+    statusFilter,
+    chainFilter,
+    sortField,
+    sortOrder,
+    pagination.skip,
+    pagination.limit,
+  ]);
 
   // Handle search submission
   const handleSearchSubmit = (e) => {
     e.preventDefault();
+    // Reset pagination when searching
+    setPagination({
+      ...pagination,
+      skip: 0,
+    });
     fetchContributions();
   };
 
@@ -392,6 +417,20 @@ const ContributionsDashboard = () => {
         alert("Contribution retry initiated");
       }
 
+      if (action === "bridge") {
+        // Bridge contribution
+        const response = await adminApi.bridgeContribution(contribution._id);
+
+        // Update the contribution in the local state
+        setContributions((prevContributions) =>
+          prevContributions.map((c) =>
+            c._id === contribution._id ? { ...c, status: "Bridging" } : c
+          )
+        );
+
+        alert(`Bridge initiated. Task ID: ${response.taskId}`);
+      }
+
       if (action === "reclaimUnsold" && isOwner) {
         if (
           window.confirm(
@@ -414,9 +453,85 @@ const ContributionsDashboard = () => {
     navigate("/admin/login");
   };
 
+  // Format token amount
+  const formatAmount = (amount, token) => {
+    try {
+      // Different tokens have different decimal places
+      const decimals = {
+        ETH: 18,
+        BNB: 18,
+        XDC: 18,
+        SOL: 9,
+        USDT: 6,
+        USDC: 6,
+        XDCAI: 18,
+      };
+
+      const tokenDecimals = decimals[token] || 18;
+      return `${parseFloat(
+        ethers.utils.formatUnits(amount, tokenDecimals)
+      ).toFixed(4)} ${token}`;
+    } catch (error) {
+      console.error("Error formatting amount:", error);
+      return `${amount} ${token}`;
+    }
+  };
+
+  // Determine if a status is retryable
+  const isRetryable = (status) => {
+    return ["Swap Failed", "Bridge Failed", "Failed"].includes(status);
+  };
+
+  // Check if a status can be bridged
+  const isBridgeable = (status, chain) => {
+    return status === "Swapped" && chain !== "xdc";
+  };
+
+  // Get next possible statuses based on current status
+  const getNextStatusOptions = (currentStatus) => {
+    const statusOptions = {
+      Detected: ["Pending Swap", "Pending Bridge", "Claimable"],
+      "Pending Swap": ["Swapped", "Swap Failed", "Pending Bridge"],
+      Swapped: ["Pending Bridge"],
+      "Pending Bridge": ["Bridging", "Bridge Failed", "Claimable"],
+      Bridging: ["Bridged", "Bridge Failed", "Claimable"],
+      Bridged: ["Claimable"],
+      Claimable: ["Claimed"],
+      "Swap Failed": ["Pending Swap", "Failed"],
+      "Bridge Failed": ["Pending Bridge", "Failed"],
+    };
+
+    return statusOptions[currentStatus] || [];
+  };
+
+  // Format transaction link helper
+  const formatTransactionLink = (txHash, chain) => {
+    if (!txHash) return "N/A";
+
+    const explorers = {
+      ethereum: "https://sepolia.etherscan.io/tx/",
+      bsc: "https://testnet.bscscan.com/tx/",
+      xdc: "https://explorer.apothem.network/tx/",
+      solana: "https://explorer.solana.com/tx/?cluster=devnet",
+    };
+
+    const baseUrl = explorers[chain] || "#";
+
+    return (
+      <a
+        href={`${baseUrl}${txHash}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[#00FA73] hover:text-[#00E066]"
+      >
+        {txHash.substring(0, 10)}...{txHash.substring(txHash.length - 4)}
+      </a>
+    );
+  };
+
   return (
-    <div className="bg-dark p-6 min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-[#121212]">
+      <div className="max-w-7xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-white">
             XDCAI Admin Dashboard
@@ -424,14 +539,14 @@ const ContributionsDashboard = () => {
           <div className="flex space-x-4">
             {isOwner && (
               <button
-                className="bg-secondary hover:bg-secondary-light text-dark px-4 py-2 rounded"
+                className="bg-[#F3BA2F] hover:bg-[#E49B0F] text-black px-4 py-2 rounded-md"
                 onClick={() => handleContributionAction(null, "reclaimUnsold")}
               >
                 Reclaim Unsold Tokens
               </button>
             )}
             <button
-              className="bg-accent-red hover:bg-accent-red/80 text-white px-4 py-2 rounded"
+              className="bg-[#ff4c4c] hover:bg-[#ff4c4c]/80 text-white px-4 py-2 rounded-md"
               onClick={handleLogout}
             >
               Logout
@@ -442,13 +557,16 @@ const ContributionsDashboard = () => {
         {/* Filters and search */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-light mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Status Filter
             </label>
             <select
-              className="w-full p-2 border border-dark-lighter bg-dark-light rounded text-white"
+              className="w-full p-2 border border-[#303030] bg-[#1A1A1A] rounded text-white"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPagination({ ...pagination, skip: 0 });
+              }}
             >
               {statusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -459,13 +577,16 @@ const ContributionsDashboard = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-light mb-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Chain Filter
             </label>
             <select
-              className="w-full p-2 border border-dark-lighter bg-dark-light rounded text-white"
+              className="w-full p-2 border border-[#303030] bg-[#1A1A1A] rounded text-white"
               value={chainFilter}
-              onChange={(e) => setChainFilter(e.target.value)}
+              onChange={(e) => {
+                setChainFilter(e.target.value);
+                setPagination({ ...pagination, skip: 0 });
+              }}
             >
               {chainOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -475,21 +596,52 @@ const ContributionsDashboard = () => {
             </select>
           </div>
 
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-light mb-1">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Sort By
+            </label>
+            <div className="flex items-center">
+              <select
+                className="flex-grow p-2 border border-[#303030] bg-[#1A1A1A] rounded-l text-white"
+                value={sortField}
+                onChange={(e) => {
+                  setSortField(e.target.value);
+                  setPagination({ ...pagination, skip: 0 });
+                }}
+              >
+                {sortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="bg-[#1A1A1A] border border-[#303030] border-l-0 p-2 rounded-r text-white"
+                onClick={() => {
+                  setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                  setPagination({ ...pagination, skip: 0 });
+                }}
+              >
+                {sortOrder === "asc" ? "↑" : "↓"}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
               Search
             </label>
             <form onSubmit={handleSearchSubmit} className="flex">
               <input
                 type="text"
-                className="flex-grow p-2 border border-dark-lighter bg-dark-light rounded-l text-white"
+                className="flex-grow p-2 border border-[#303030] bg-[#1A1A1A] rounded-l text-white"
                 placeholder="Search by address, tx hash..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <button
                 type="submit"
-                className="bg-primary text-dark px-4 py-2 rounded-r hover:bg-primary-light"
+                className="bg-[#00FA73] text-black px-4 py-2 rounded-r hover:bg-[#00E066]"
               >
                 Search
               </button>
@@ -499,7 +651,7 @@ const ContributionsDashboard = () => {
 
         {/* Error message */}
         {error && (
-          <div className="bg-accent-red/20 text-accent-red p-4 rounded mb-4">
+          <div className="bg-[#ff4c4c]/20 text-[#ff4c4c] p-4 rounded-md mb-4">
             {error}
           </div>
         )}
@@ -507,24 +659,147 @@ const ContributionsDashboard = () => {
         {/* Loading indicator */}
         {isLoading ? (
           <div className="text-center py-8">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#00FA73]"></div>
             <p className="mt-2 text-white">Loading contributions...</p>
           </div>
         ) : (
           <>
             {/* Contributions table */}
-            <ContributionsTable
-              contributions={contributions}
-              onViewDetails={(contribution) =>
-                setSelectedContribution(contribution)
-              }
-              onActionClick={handleContributionAction}
-            />
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-[#1A1A1A] border border-[#303030] shadow-md rounded-md">
+                <thead className="bg-[#0C0C0C]">
+                  <tr>
+                    <th className="py-2 px-4 border-b border-[#303030] text-left text-gray-300">
+                      ID
+                    </th>
+                    <th className="py-2 px-4 border-b border-[#303030] text-left text-gray-300">
+                      Source
+                    </th>
+                    <th className="py-2 px-4 border-b border-[#303030] text-left text-gray-300">
+                      Amount
+                    </th>
+                    <th className="py-2 px-4 border-b border-[#303030] text-left text-gray-300">
+                      Status
+                    </th>
+                    <th className="py-2 px-4 border-b border-[#303030] text-left text-gray-300">
+                      XDC Address
+                    </th>
+                    <th className="py-2 px-4 border-b border-[#303030] text-left text-gray-300">
+                      Created
+                    </th>
+                    <th className="py-2 px-4 border-b border-[#303030] text-left text-gray-300">
+                      Last Updated
+                    </th>
+                    <th className="py-2 px-4 border-b border-[#303030] text-left text-gray-300">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {contributions.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan="8"
+                        className="py-4 px-4 text-center text-gray-300"
+                      >
+                        No contributions found
+                      </td>
+                    </tr>
+                  ) : (
+                    contributions.map((contribution) => (
+                      <tr key={contribution._id} className="hover:bg-[#242424]">
+                        <td
+                          className="py-2 px-4 border-b border-[#303030] cursor-pointer text-[#00FA73] hover:text-[#00E066]"
+                          onClick={() => setSelectedContribution(contribution)}
+                        >
+                          {contribution._id.substring(0, 8)}...
+                        </td>
+                        <td className="py-2 px-4 border-b border-[#303030]">
+                          <div className="text-white">
+                            {contribution.sourceChain}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {contribution.sourceToken}
+                          </div>
+                        </td>
+                        <td className="py-2 px-4 border-b border-[#303030]">
+                          <div className="text-white">
+                            {formatAmount(
+                              contribution.amount,
+                              contribution.sourceToken
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            ${contribution.usdValue}
+                          </div>
+                        </td>
+                        <td className="py-2 px-4 border-b border-[#303030]">
+                          <StatusBadge status={contribution.status} />
+                        </td>
+                        <td className="py-2 px-4 border-b border-[#303030] text-xs text-white">
+                          {formatAddress(contribution.xdcClaimAddress)}
+                        </td>
+                        <td className="py-2 px-4 border-b border-[#303030] text-xs text-white">
+                          {new Date(contribution.createdAt).toLocaleString()}
+                        </td>
+                        <td className="py-2 px-4 border-b border-[#303030] text-xs text-white">
+                          {new Date(contribution.updatedAt).toLocaleString()}
+                        </td>
+                        <td className="py-2 px-4 border-b border-[#303030]">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              className="bg-[#00FA73] hover:bg-[#00E066] text-black px-2 py-1 rounded text-xs"
+                              onClick={() =>
+                                handleContributionAction(
+                                  contribution,
+                                  "advance"
+                                )
+                              }
+                            >
+                              Advance
+                            </button>
+                            {isRetryable(contribution.status) && (
+                              <button
+                                className="bg-[#1da1f2] hover:bg-[#1da1f2]/80 text-white px-2 py-1 rounded text-xs"
+                                onClick={() =>
+                                  handleContributionAction(
+                                    contribution,
+                                    "retry"
+                                  )
+                                }
+                              >
+                                Retry
+                              </button>
+                            )}
+                            {isBridgeable(
+                              contribution.status,
+                              contribution.sourceChain
+                            ) && (
+                              <button
+                                className="bg-[#9945FF] hover:bg-[#8A35F0] text-white px-2 py-1 rounded text-xs"
+                                onClick={() =>
+                                  handleContributionAction(
+                                    contribution,
+                                    "bridge"
+                                  )
+                                }
+                              >
+                                Bridge
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             {/* Pagination */}
             <div className="mt-4 flex justify-between items-center">
-              <div className="text-sm text-gray-light">
-                Showing {pagination.skip + 1} to{" "}
+              <div className="text-sm text-gray-300">
+                Showing {pagination.total > 0 ? pagination.skip + 1 : 0} to{" "}
                 {Math.min(
                   pagination.skip + contributions.length,
                   pagination.total
@@ -535,7 +810,7 @@ const ContributionsDashboard = () => {
                 <button
                   onClick={handlePrevPage}
                   disabled={pagination.skip === 0}
-                  className="px-4 py-2 border border-dark-lighter rounded bg-dark-light text-white disabled:opacity-50"
+                  className="px-4 py-2 border border-[#303030] rounded bg-[#1A1A1A] text-white disabled:opacity-50"
                 >
                   Previous
                 </button>
@@ -544,7 +819,7 @@ const ContributionsDashboard = () => {
                   disabled={
                     pagination.skip + pagination.limit >= pagination.total
                   }
-                  className="px-4 py-2 border border-dark-lighter rounded bg-dark-light text-white disabled:opacity-50"
+                  className="px-4 py-2 border border-[#303030] rounded bg-[#1A1A1A] text-white disabled:opacity-50"
                 >
                   Next
                 </button>
@@ -555,11 +830,204 @@ const ContributionsDashboard = () => {
 
         {/* Detail modal */}
         {selectedContribution && (
-          <ContributionDetailModal
-            contribution={selectedContribution}
-            onClose={() => setSelectedContribution(null)}
-            onAction={handleContributionAction}
-          />
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-[#1A1A1A] p-6 rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-white">
+                  Contribution Details
+                </h2>
+                <button
+                  className="text-gray-400 hover:text-white"
+                  onClick={() => setSelectedContribution(null)}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <h3 className="font-medium text-gray-300">ID</h3>
+                  <p className="text-sm text-white">
+                    {selectedContribution._id}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-300">Status</h3>
+                  <StatusBadge status={selectedContribution.status} />
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-300">Source Chain</h3>
+                  <p className="text-sm text-white">
+                    {selectedContribution.sourceChain}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-300">Source Token</h3>
+                  <p className="text-sm text-white">
+                    {selectedContribution.sourceToken}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-300">Amount</h3>
+                  <p className="text-sm text-white">
+                    {formatAmount(
+                      selectedContribution.amount,
+                      selectedContribution.sourceToken
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-300">USD Value</h3>
+                  <p className="text-sm text-white">
+                    ${selectedContribution.usdValue}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-300">
+                    XDC Claim Address
+                  </h3>
+                  <p className="text-sm text-white">
+                    {selectedContribution.xdcClaimAddress}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-300">Email</h3>
+                  <p className="text-sm text-white">
+                    {selectedContribution.email || "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <h3 className="font-medium text-gray-300">Notes</h3>
+                <p className="text-sm p-2 bg-[#0C0C0C] rounded text-white">
+                  {selectedContribution.notes || "No notes available"}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div>
+                  <h3 className="font-medium text-gray-300">
+                    Source Transaction
+                  </h3>
+                  <p className="text-sm text-white">
+                    {formatTransactionLink(
+                      selectedContribution.sourceTxHash,
+                      selectedContribution.sourceChain
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-300">
+                    Swap Transaction
+                  </h3>
+                  <p className="text-sm text-white">
+                    {selectedContribution.swapTxHash
+                      ? formatTransactionLink(
+                          selectedContribution.swapTxHash,
+                          selectedContribution.sourceChain
+                        )
+                      : "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-300">
+                    Bridge Transaction/Task
+                  </h3>
+                  <p className="text-sm text-white">
+                    {selectedContribution.bridgeTxHash
+                      ? selectedContribution.bridgeTxHash
+                      : "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <h3 className="font-medium text-gray-300">Created</h3>
+                  <p className="text-sm text-white">
+                    {new Date(selectedContribution.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-300">Last Updated</h3>
+                  <p className="text-sm text-white">
+                    {new Date(selectedContribution.updatedAt).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-300">Last Processed</h3>
+                  <p className="text-sm text-white">
+                    {selectedContribution.lastProcessed
+                      ? new Date(
+                          selectedContribution.lastProcessed
+                        ).toLocaleString()
+                      : "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-300">Retry Count</h3>
+                  <p className="text-sm text-white">
+                    {selectedContribution.retryCount || 0}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-between pt-4 border-t border-[#303030]">
+                <div>
+                  <h3 className="font-medium text-gray-300 mb-2">
+                    Advance Status
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {getNextStatusOptions(selectedContribution.status).map(
+                      (status) => (
+                        <button
+                          key={status}
+                          className="bg-[#00FA73] hover:bg-[#00E066] text-black px-3 py-1 rounded text-sm"
+                          onClick={() =>
+                            handleContributionAction(
+                              selectedContribution,
+                              "advance",
+                              status
+                            )
+                          }
+                        >
+                          {status}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex space-x-2 self-end">
+                  {isRetryable(selectedContribution.status) && (
+                    <button
+                      className="bg-[#1da1f2] hover:bg-[#1da1f2]/80 text-white px-4 py-2 rounded text-sm"
+                      onClick={() =>
+                        handleContributionAction(selectedContribution, "retry")
+                      }
+                    >
+                      Retry
+                    </button>
+                  )}
+
+                  {isBridgeable(
+                    selectedContribution.status,
+                    selectedContribution.sourceChain
+                  ) && (
+                    <button
+                      className="bg-[#9945FF] hover:bg-[#8A35F0] text-white px-4 py-2 rounded text-sm"
+                      onClick={() =>
+                        handleContributionAction(selectedContribution, "bridge")
+                      }
+                    >
+                      Bridge
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

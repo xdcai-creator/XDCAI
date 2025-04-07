@@ -328,7 +328,7 @@ const ThankYouScreen = () => {
             value={emailInput}
             onChange={(e) => setEmailInput(e.target.value)}
             placeholder="Enter your email address"
-            className="w-full bg-dark-light rounded-md border border-dark-darker p-3 text-white text-lg mb-4"
+            className="w-full bg-dark-light rounded-md border border-[#425152] p-3 text-white text-lg mb-4"
             required
           />
 
@@ -369,7 +369,7 @@ const ThankYouScreen = () => {
             value={xdcAddressInput}
             onChange={(e) => setXdcAddressInput(e.target.value)}
             placeholder="Enter XDC address (starts with xdc or 0x)"
-            className="w-full bg-dark-light rounded-md border border-dark-darker p-3 text-white text-lg mb-4"
+            className="w-full bg-dark-light rounded-md border border-[#425152] p-3 text-white text-lg mb-4"
             required
           />
 
@@ -403,7 +403,7 @@ const ThankYouScreen = () => {
         Thanks for purchasing XDCAI tokens!
       </div>
 
-      <div className="mb-6 p-4 bg-dark-light border border-dark-darker rounded-lg">
+      <div className="mb-6 p-4 bg-dark-light border border-[#425152] rounded-lg">
         <h3 className="text-primary font-bold mb-3 text-center">
           Purchase Summary
         </h3>

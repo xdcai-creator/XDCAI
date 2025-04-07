@@ -17,9 +17,12 @@ import networkConfig from "../../config/networkConfig";
 import { formatAddress } from "../../utils/formatters";
 import {
   showWarning,
+  showError,
   showProcessingTransaction,
   updateToast,
 } from "../../utils/toastHandler";
+
+import { getIntentStatus } from "../../services/transactionIntentService";
 
 /**
  * Purchase screen component
@@ -69,6 +72,10 @@ const PurchaseScreen = () => {
     return calculateBonus(ethAmount, selectedCurrency);
   }, [ethAmount, selectedCurrency, marketPrices, calculateBonus]);
 
+  //
+  const [processingStep, setProcessingStep] = useState("");
+  const [isSwitchingNetwork, setIsSwitchingNetwork] = useState(false);
+
   // Update XDCAI amount when input or currency changes
   useEffect(() => {
     if (
@@ -85,26 +92,32 @@ const PurchaseScreen = () => {
     }
   }, [ethAmount, selectedCurrency, marketPrices, tokenPrice]);
 
-  // Handle countdown for transaction intent
+  // Update XDCAI amount when input or currency changes
   useEffect(() => {
-    if (!intentExpiry) return;
+    if (ethAmount && !isNaN(parseFloat(ethAmount)) && tokenPrice) {
+      // Handle price calculation for all token types
+      let currencyPrice = marketPrices[selectedCurrency];
 
-    const countdownInterval = setInterval(() => {
-      const now = new Date();
-      const expiryTime = new Date(intentExpiry);
-      const timeRemaining = Math.max(0, Math.floor((expiryTime - now) / 1000)); // in seconds
-
-      setIntentTimeRemaining(timeRemaining);
-
-      if (timeRemaining <= 0) {
-        clearInterval(countdownInterval);
-        clearStoredIntentId();
-        showWarning("Transaction time window expired. Please try again.");
+      // For all USDT and USDC variants, use a fixed price of 1 USD
+      if (
+        selectedCurrency.includes("USDT") ||
+        selectedCurrency.includes("USDC")
+      ) {
+        currencyPrice = 1;
+      } else {
+        // For other tokens, get the price from marketPrices or default to 0
+        // Extract the base token name for hyphenated tokens (e.g., "ETH" from "ETH-BNB")
+        const baseToken = selectedCurrency.split("-")[0];
+        currencyPrice = marketPrices[baseToken] || 0;
       }
-    }, 1000);
 
-    return () => clearInterval(countdownInterval);
-  }, [intentExpiry]);
+      const usdValue = parseFloat(ethAmount) * currencyPrice;
+      const tokenAmount = usdValue / tokenPrice;
+      setXdcaiAmount(tokenAmount.toFixed(8));
+    } else {
+      setXdcaiAmount("0");
+    }
+  }, [ethAmount, selectedCurrency, marketPrices, tokenPrice, setXdcaiAmount]);
 
   // Handle amount input with decimal validation
   const handleAmountChange = (e) => {
@@ -118,33 +131,42 @@ const PurchaseScreen = () => {
   // Register transaction intent with backend
   const registerIntent = async () => {
     if (!ethAmount || parseFloat(ethAmount) <= 0 || !address) {
-      setError("Please enter a valid amount and connect your wallet");
+      toast.error("Please enter a valid amount and connect your wallet");
       return null;
     }
 
     try {
+      // Determine base currency without the chain suffix
+      let baseCurrency = selectedCurrency;
+      if (selectedCurrency.includes("-")) {
+        baseCurrency = selectedCurrency.split("-")[0]; // Extract USDT from USDT-BNB
+      }
+
+      // Determine chain
+      const currentChain =
+        selectedCurrency === "XDC"
+          ? "xdc"
+          : selectedCurrency.includes("-ETH") || selectedCurrency === "ETH"
+          ? "ethereum"
+          : selectedCurrency.includes("-BNB") || selectedCurrency === "BNB"
+          ? "bsc"
+          : selectedCurrency.includes("-SOL") || selectedCurrency === "SOL"
+          ? "solana"
+          : "xdc";
+
       const result = await registerTransactionIntent({
         walletAddress: address,
         expectedAmount: ethAmount,
-        paymentCurrency: selectedCurrency,
-        expectedChain:
-          selectedCurrency === "XDC"
-            ? "xdc"
-            : selectedCurrency === "ETH" || selectedCurrency.includes("-ETH")
-            ? "ethereum"
-            : selectedCurrency === "BNB" || selectedCurrency.includes("-BNB")
-            ? "bsc"
-            : selectedCurrency === "SOL" || selectedCurrency.includes("-SOL")
-            ? "solana"
-            : "xdc",
+        paymentCurrency: baseCurrency, // Send USDT instead of USDT-BNB
+        expectedChain: currentChain,
+        tokenType: selectedCurrency, // Include the full token name as tokenType
       });
 
       setIntentId(result.intentId);
-      setIntentExpiry(result.expiresAt);
       return result;
     } catch (error) {
       console.error("Error registering intent:", error);
-      setError("Failed to prepare transaction. Please try again.");
+      toast.error("Failed to prepare transaction. Please try again.");
       return null;
     }
   };
@@ -156,45 +178,115 @@ const PurchaseScreen = () => {
     setError(null);
   };
 
+  const isIntentExpired = async (intentId) => {
+    if (!intentId) return true;
+
+    try {
+      const status = await getIntentStatus(intentId);
+      return status.status === "EXPIRED";
+    } catch (error) {
+      console.error("Error checking intent status:", error);
+      return true; // Consider it expired if there's an error checking
+    }
+  };
+
   // Handle purchase transaction
   const handlePurchase = async () => {
     try {
       // Clear any previous errors
       setError(null);
+      setProcessingStep("");
 
       // Basic input validation
       if (!ethAmount || parseFloat(ethAmount) <= 0) {
         const errorMsg = `Please enter a valid ${selectedCurrency} amount`;
-        setError(errorMsg);
+        showError(errorMsg);
         return;
       }
 
       if (!address) {
         const errorMsg = "No connected wallet account found";
-        setError(errorMsg);
+        showError(errorMsg);
         return;
       }
+
+      // Special handling for Solana wallet connection
+      if (
+        (selectedCurrency === "SOL" || selectedCurrency.includes("-SOL")) &&
+        !isSolanaConnected
+      ) {
+        if (solanaWallet && solanaWallet.wallet) {
+          try {
+            await solanaWallet.connect();
+            // Don't proceed with purchase yet - user needs to complete connection first
+            return;
+          } catch (err) {
+            console.error("Error connecting to Solana wallet:", err);
+            showError("Failed to connect Solana wallet. Please try again.");
+            return;
+          }
+        } else {
+          showError("Please connect a Solana wallet to continue");
+          return;
+        }
+      }
+
+      const newIntent = await registerIntent();
+      if (!newIntent) {
+        showError("Purchase could not be initialized");
+        return;
+      }
+
+      console.log("newIntent ", newIntent);
+      // Check if there's an existing intent and if it's expired
+      // if (intentId) {
+      //   const expired = await isIntentExpired(intentId);
+
+      //   if (expired) {
+      //     // Clear the expired intent
+      //     clearStoredIntentId();
+      //     setIntentId(null);
+
+      //     // Register a new intent
+      //     setProcessingStep("Preparing transaction...");
+      //     const newIntent = await registerIntent();
+      //     if (!newIntent) {
+      //       showError("Purchase could not be initialized");
+      //       return;
+      //     }
+      //   }
+      // } else {
+      //   // No existing intent, register a new one
+      //   setProcessingStep("Preparing transaction...");
+      //   const newIntent = await registerIntent();
+      //   if (!newIntent) {
+      //     showError("Purchase could not be initialized");
+      //     return;
+      //   }
+      // }
+
+      // Processing begins
+      setIsProcessing(true);
+      const processingToastId = showProcessingTransaction();
+      setToastId(processingToastId);
 
       // For XDC, use the contract directly
       if (selectedCurrency === "XDC") {
         if (!presaleContract) {
           const errorMsg = "Contract not loaded. Please try again.";
-          setError(errorMsg);
+          showError(errorMsg);
+          setIsProcessing(false);
           return;
         }
 
-        // Register transaction intent
-        const intentResult = await registerIntent();
-        if (!intentResult) return;
-
-        // Processing begins
-        setIsProcessing(true);
-        const processingToastId = showProcessingTransaction();
-        setToastId(processingToastId);
-
         try {
+          setProcessingStep("Processing XDC payment...");
           // Process XDC payment through contract
           const parsedAmount = ethers.utils.parseEther(ethAmount);
+
+          updateToast(processingToastId, {
+            render: "Please confirm the transaction in your wallet...",
+          });
 
           const tx = await presaleContract.buyWithNativeCoin({
             value: parsedAmount,
@@ -205,6 +297,7 @@ const PurchaseScreen = () => {
             render: "Transaction submitted, waiting for confirmation...",
           });
 
+          setProcessingStep("Waiting for confirmation...");
           // Wait for transaction confirmation
           const receipt = await tx.wait();
 
@@ -237,169 +330,64 @@ const PurchaseScreen = () => {
         }
       } else {
         // For other chains (ETH, BNB, SOL, etc.), use the transfer service
-        // Register transaction intent
-        const intentResult = await registerIntent();
-        if (!intentResult) return;
+        try {
+          setIsSwitchingNetwork(true);
+          setProcessingStep("Preparing wallet...");
 
-        // Processing begins
-        setIsProcessing(true);
-        const processingToastId = showProcessingTransaction();
-        setToastId(processingToastId);
+          updateToast(processingToastId, {
+            render: "Preparing transaction. Please follow wallet prompts...",
+          });
 
-        // Determine which chain and token to use
-        let chain = "ethereum"; // Default
-        let solanaConnection = null;
+          // Determine which chain and token to use
+          let chain = "ethereum"; // Default
+          let solanaConnection = null;
 
-        // Determine the chain based on selected currency
-        if (selectedCurrency === "ETH") {
-          chain = "ethereum";
-        } else if (
-          selectedCurrency === "BNB" ||
-          selectedCurrency.includes("-BNB")
-        ) {
-          chain = "bsc";
-        } else if (
-          selectedCurrency === "SOL" ||
-          selectedCurrency.includes("-SOL")
-        ) {
-          chain = "solana";
+          // Determine the chain based on selected currency
+          if (selectedCurrency === "ETH") {
+            chain = "ethereum";
+          } else if (
+            selectedCurrency === "BNB" ||
+            selectedCurrency.includes("-BNB")
+          ) {
+            chain = "bsc";
+          } else if (
+            selectedCurrency === "SOL" ||
+            selectedCurrency.includes("-SOL")
+          ) {
+            chain = "solana";
 
-          // For Solana, we need to initialize the connection
-          const solanaRpcUrl = networkConfig.rpcEndpoints.solana.http;
-          solanaConnection = new Connection(solanaRpcUrl);
+            // For Solana, we need to initialize the connection
+            const solanaRpcUrl = networkConfig.rpcEndpoints.solana.http;
+            solanaConnection = new Connection(solanaRpcUrl);
 
-          if (!solanaWallet || !solanaWallet.connected) {
-            setError("Solana wallet not connected");
-            setIsProcessing(false);
-            return;
-          }
-        }
-
-        // Initialize provider based on chain
-        let provider = null;
-        if (chain !== "solana") {
-          if (window.ethereum) {
-            provider = new ethers.providers.Web3Provider(window.ethereum);
-
-            // Ensure the correct network is selected
-            let requiredChainId;
-            switch (chain) {
-              case "ethereum":
-                requiredChainId = isTestnet ? "aa36a7" : 1; // Goerli/Ethereum Mainnet
-                break;
-              case "bsc":
-                requiredChainId = isTestnet ? 97 : 56; // BSC Testnet/Mainnet
-                break;
-              default:
-                requiredChainId = isTestnet ? 5 : 1; // Default
-            }
-
-            try {
-              // Request user to switch networks if needed
-              const network = await provider.getNetwork();
-              if (network.chainId !== requiredChainId) {
-                try {
-                  await window.ethereum.request({
-                    method: "wallet_switchEthereumChain",
-                    params: [{ chainId: `0x${requiredChainId.toString(16)}` }],
-                  });
-                  // Refresh provider after network switch
-                  provider = new ethers.providers.Web3Provider(window.ethereum);
-                } catch (switchError) {
-                  // Handle the case where the chain has not been added to MetaMask
-                  if (switchError.code === 4902) {
-                    // Different chains have different parameters
-                    let params;
-                    if (chain === "bsc") {
-                      params = {
-                        chainId: `0x${requiredChainId.toString(16)}`,
-                        chainName: isTestnet
-                          ? "BSC Testnet"
-                          : "Binance Smart Chain",
-                        nativeCurrency: {
-                          name: "BNB",
-                          symbol: "BNB",
-                          decimals: 18,
-                        },
-                        rpcUrls: [networkConfig.rpcEndpoints.bsc.http],
-                        blockExplorerUrls: [
-                          isTestnet
-                            ? "https://testnet.bscscan.com/"
-                            : "https://bscscan.com/",
-                        ],
-                      };
-                    } else {
-                      // Default to Ethereum parameters
-                      params = {
-                        chainId: `0x${requiredChainId.toString(16)}`,
-                        chainName: isTestnet
-                          ? "Sepolia Testnet"
-                          : "Ethereum Mainnet",
-                        nativeCurrency: {
-                          name: "Ether",
-                          symbol: "ETH",
-                          decimals: 18,
-                        },
-                        rpcUrls: [networkConfig.rpcEndpoints.ethereum.http],
-                        blockExplorerUrls: [
-                          isTestnet
-                            ? "https://sepolia.etherscan.io/"
-                            : "https://etherscan.io/",
-                        ],
-                      };
-                    }
-
-                    try {
-                      await window.ethereum.request({
-                        method: "wallet_addEthereumChain",
-                        params: [params],
-                      });
-
-                      // After adding, try switching again
-                      await window.ethereum.request({
-                        method: "wallet_switchEthereumChain",
-                        params: [
-                          { chainId: `0x${requiredChainId.toString(16)}` },
-                        ],
-                      });
-
-                      // Refresh provider after network switch
-                      provider = new ethers.providers.Web3Provider(
-                        window.ethereum
-                      );
-                    } catch (addError) {
-                      setError(
-                        `Could not add ${chain} network: ${addError.message}`
-                      );
-                      setIsProcessing(false);
-                      return;
-                    }
-                  } else {
-                    setError(
-                      `Please switch to the correct network for ${selectedCurrency}`
-                    );
-                    setIsProcessing(false);
-                    return;
-                  }
-                }
-              }
-            } catch (networkError) {
-              console.error("Network detection error:", networkError);
-              setError("Failed to determine network. Please try again.");
+            if (!solanaWallet || !solanaWallet.connected) {
+              setError("Solana wallet not connected");
               setIsProcessing(false);
+              setIsSwitchingNetwork(false);
               return;
             }
-          } else {
-            setError("No Ethereum provider found");
-            setIsProcessing(false);
-            return;
           }
-        }
 
-        // Execute the transfer
-        try {
+          // Initialize provider based on chain
+          let provider = null;
+          if (chain !== "solana") {
+            if (window.ethereum) {
+              provider = new ethers.providers.Web3Provider(window.ethereum);
+              setProcessingStep("Switching to correct network...");
+            } else {
+              setError("No Ethereum provider found");
+              setIsProcessing(false);
+              setIsSwitchingNetwork(false);
+              return;
+            }
+          }
+
+          // Network switch should now be handled within the transfer functions
+          setIsSwitchingNetwork(false);
+          setProcessingStep("Please confirm transaction in your wallet...");
+
           updateToast(processingToastId, {
-            render: "Initiating transfer. Please confirm in your wallet...",
+            render: "Please confirm the transaction in your wallet...",
           });
 
           let transferResult;
@@ -422,8 +410,12 @@ const PurchaseScreen = () => {
 
           // Update toast to show waiting for confirmation
           updateToast(processingToastId, {
-            render: "Transaction submitted, waiting for confirmation...",
+            render: "Transaction submitted successfully!",
+            autoClose: 3000,
+            type: toast.TYPE.SUCCESS,
           });
+
+          setProcessingStep("Transaction complete!");
 
           // Store transaction details for thank you page
           const usdValue =
@@ -456,6 +448,8 @@ const PurchaseScreen = () => {
       setError("Transaction failed. Please try again or contact support.");
     } finally {
       setIsProcessing(false);
+      setIsSwitchingNetwork(false);
+      setProcessingStep("");
     }
   };
 
@@ -508,11 +502,11 @@ const PurchaseScreen = () => {
               value={ethAmount}
               onChange={handleAmountChange}
               placeholder="0"
-              className="flex-1 bg-dark-light border border-dark-darker rounded-lg p-4 text-xl text-white h-14"
+              className="flex-1 bg-dark-light border border-[#425152] rounded-lg p-4 text-xl text-white h-14"
             />
             <button
               onClick={() => setShowCurrencySelection(true)}
-              className="w-32 bg-dark-light border border-dark-darker rounded-lg px-4 flex items-center justify-center text-white cursor-pointer h-14"
+              className="w-32 bg-dark-light border border-[#425152] rounded-lg px-4 flex items-center justify-center text-white cursor-pointer h-14"
             >
               <span className="font-bold text-lg">{selectedCurrency}</span>
               <span className="ml-2">▼</span>
@@ -528,7 +522,7 @@ const PurchaseScreen = () => {
             value={xdcaiAmount}
             readOnly
             placeholder="0"
-            className="w-full bg-dark-light border border-dark-darker rounded-lg p-4 text-xl text-white h-14 mb-1"
+            className="w-full bg-dark-light border border-[#425152] rounded-lg p-4 text-xl text-white h-14 mb-1"
           />
           <p className="text-right text-[#aaa] text-sm mb-5">
             1 $XDCAI = {isLoadingPrice ? "Loading..." : `$${tokenPrice}`}
@@ -545,21 +539,14 @@ const PurchaseScreen = () => {
               type="text"
               value={bonusAmount.toFixed(8)}
               readOnly
-              className="w-full bg-dark-light border border-dark-darker rounded-lg p-3 text-white text-lg"
+              className="w-full bg-dark-light border border-[#425152] rounded-lg p-3 text-white text-lg"
             />
           </div>
         )}
 
-        {/* Error message display */}
-        {error && (
-          <div className="text-center text-accent-red bg-accent-red/10 p-4 border border-accent-red rounded-lg mb-6">
-            {error}
-          </div>
-        )}
-
         {/* Transaction intent timer */}
-        {intentId && intentTimeRemaining > 0 && (
-          <div className="bg-dark-light p-4 rounded-lg mb-4 border border-dark-darker text-center">
+        {/* {intentId && intentTimeRemaining > 0 && (
+          <div className="bg-dark-light p-4 rounded-lg mb-4 border border-[#425152] text-center">
             <p className="text-primary font-medium mb-1">Time Window Active</p>
             <p className="text-white text-sm">
               Complete your transaction within{" "}
@@ -569,7 +556,7 @@ const PurchaseScreen = () => {
               </span>
             </p>
           </div>
-        )}
+        )} */}
 
         {/* Buy button */}
         <button
@@ -582,16 +569,32 @@ const PurchaseScreen = () => {
                 : "bg-[#00FA73] cursor-pointer hover:bg-primary-light"
             }`}
         >
-          {isProcessing
-            ? "PROCESSING..."
-            : isLoadingPrice
-            ? "LOADING..."
-            : (selectedCurrency === "SOL" ||
-                selectedCurrency.includes("-SOL")) &&
-              !isSolanaConnected
-            ? "CONNECT SOLANA WALLET"
-            : `BUY $XDCAI`}
+          {isProcessing ? (
+            <span className="flex items-center justify-center">
+              {processingStep || "PROCESSING..."}
+              <div className="ml-2 animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+            </span>
+          ) : isLoadingPrice ? (
+            "LOADING..."
+          ) : (selectedCurrency === "SOL" ||
+              selectedCurrency.includes("-SOL")) &&
+            !isSolanaConnected ? (
+            "CONNECT SOLANA WALLET"
+          ) : (
+            `BUY $XDCAI`
+          )}
         </button>
+        {isSwitchingNetwork && (
+          <div className="absolute inset-0 bg-dark-darker/70 flex items-center justify-center z-10">
+            <div className="bg-dark-light p-4 rounded-lg text-center">
+              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
+              <p className="text-white">Switching networks...</p>
+              <p className="text-gray-light text-sm mt-1">
+                Please confirm in your wallet
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -604,7 +607,7 @@ const PurchaseScreen = () => {
       </div>
 
       {/* Account Information Section */}
-      <div className="mb-5 bg-dark-light border border-dark-darker rounded-lg p-4 flex justify-between items-center">
+      <div className="mb-5 bg-dark-light border border-[#425152] rounded-lg p-4 flex justify-between items-center">
         <div className="flex items-center">
           <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center mr-3 text-dark font-bold">
             {displayAddress.charAt(0)}

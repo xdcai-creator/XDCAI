@@ -35,7 +35,7 @@ const HomeScreen = () => {
       {/* Action buttons */}
       <div className="flex justify-between gap-4 mb-6">
         <button
-          className="flex-1 py-3 px-4 bg-dark-light border border-dark-darker rounded-md text-white font-medium"
+          className="flex-1 py-3 px-4 bg-dark-light border border-[#425152] rounded-md text-white font-medium"
           onClick={() => window.open("https://buy.onramper.com", "_blank")}
         >
           Don't Have Crypto

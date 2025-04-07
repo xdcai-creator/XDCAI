@@ -125,7 +125,7 @@ const XDCAIPurchaseFlow = () => {
 
       // If the intent is verified or expired, navigate accordingly
       if (status.status === "VERIFIED") {
-        // navigate("/thank-you");
+        navigate("/thank-you");
       } else if (status.status === "EXPIRED") {
         // Clear the intent and allow a new purchase
         clearStoredIntentId();

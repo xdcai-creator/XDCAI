@@ -137,7 +137,7 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
           value={searchQuery}
           onChange={handleSearch}
           placeholder="Search currencies..."
-          className="w-full p-2.5 bg-dark-light border border-dark-darker rounded-md text-white"
+          className="w-full p-2.5 bg-dark-light border border-[#425152] rounded-md text-white"
         />
       </div>
 
@@ -205,7 +205,7 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
           filteredCoins.map((coin) => (
             <div
               key={coin.symbol}
-              className="p-4 bg-dark-light border border-dark-darker rounded-lg mb-2 flex items-center cursor-pointer hover:border-primary transition-colors"
+              className="p-4 bg-dark-light border border-[#425152] rounded-lg mb-2 flex items-center cursor-pointer hover:border-primary transition-colors"
               onClick={() => onSelect(coin.symbol)}
             >
               <div className="mr-3">

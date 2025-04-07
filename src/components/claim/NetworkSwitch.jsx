@@ -10,7 +10,7 @@ const NetworkSwitch = () => {
   const networkDetails = getNetworkDetails();
 
   return (
-    <div className="bg-dark-light border border-dark-darker rounded-lg p-4 mb-5">
+    <div className="bg-dark-light border border-[#425152] rounded-lg p-4 mb-5">
       <h3 className="text-primary mb-3 text-center font-semibold">
         XDC Network Details
       </h3>

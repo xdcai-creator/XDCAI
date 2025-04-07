@@ -54,15 +54,7 @@ export const contributionsApi = {
   // Get user contributions
   getUserContributions: async (address) => {
     const response = await apiClient.get(
-      `/api/transactions/contributions/${address}`
-    );
-    return response.data;
-  },
-
-  // Get user vesting information
-  getVestingInfo: async (address) => {
-    const response = await apiClient.get(
-      `/api/user/vesting-info?address=${address}`
+      `/api/transactions/contributions?walletAddress=${address}`
     );
     return response.data;
   },
@@ -123,15 +115,43 @@ export const adminApi = {
     return response.data;
   },
 
-  // Get all contributions (with filtering)
-  getContributions: async (filters = {}) => {
+  // Get all contributions with flexible filtering options
+  getContributions: async (options = {}) => {
+    // Build query parameters
     const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value) params.append(key, value);
-    });
+
+    // Always add admin=true for admin dashboard
+    params.append("admin", "true");
+
+    // Add pagination
+    if (options.limit) params.append("limit", options.limit.toString());
+    if (options.skip !== undefined)
+      params.append("skip", options.skip.toString());
+
+    // Add sorting
+    if (options.sort) params.append("sort", options.sort);
+    if (options.order) params.append("order", options.order);
+
+    // Add filters if set
+    if (options.status && options.status !== "all") {
+      params.append("status", options.status);
+    }
+
+    if (options.chain && options.chain !== "all") {
+      params.append("chain", options.chain);
+    }
+
+    if (options.search) {
+      params.append("search", options.search);
+    }
+
+    // Add any other custom filters
+    if (options.tokenType) params.append("tokenType", options.tokenType);
+    if (options.startDate) params.append("startDate", options.startDate);
+    if (options.endDate) params.append("endDate", options.endDate);
 
     const response = await apiClient.get(
-      `/api/transactions/contributions/pending?${params}`,
+      `/api/transactions/contributions?${params.toString()}`,
       {
         headers: authHeader(),
       }
@@ -169,6 +189,18 @@ export const adminApi = {
     return response.data;
   },
 
+  // Bridge a contribution
+  bridgeContribution: async (contributionId) => {
+    const response = await apiClient.post(
+      `/api/bridge/contributions/${contributionId}/bridge`,
+      {},
+      {
+        headers: authHeader(),
+      }
+    );
+    return response.data;
+  },
+
   // Claim tokens on behalf of user
   claimTokensForUser: async (userAddress) => {
     const response = await apiClient.post(
@@ -198,10 +230,8 @@ export const adminApi = {
 
 // Contract API
 export const contractApi = {
-  getContractDetails: async (filters = {}) => {
-    const response = await apiClient.get(`/api/contract/details`, {
-      headers: authHeader(),
-    });
+  getContractDetails: async () => {
+    const response = await apiClient.get(`/api/contract/details`);
     return response.data;
   },
 };

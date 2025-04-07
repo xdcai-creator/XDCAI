@@ -228,14 +228,14 @@ const ClaimScreen = () => {
       {showNetworkDetails && !isXdcConnected && <NetworkSwitch />}
 
       {/* Vesting Information */}
-      <div className="bg-dark-light border border-dark-darker rounded-md p-5 mb-6">
+      <div className="bg-dark-light border border-[#425152] rounded-md p-5 mb-6">
         <h3 className="text-lg font-semibold text-primary text-center mb-4">
           Your Vesting Summary
         </h3>
 
         {BigInt(vestingInfo.totalAmount) > BigInt(0) ? (
           <>
-            <div className="flex justify-between border-b border-dark-darker py-2 mb-2">
+            <div className="flex justify-between border-b border-[#425152] py-2 mb-2">
               <span className="text-white">Total Purchased:</span>
               <span className="font-semibold text-white">
                 {formatTokenAmount(vestingInfo.totalAmount, tokenDecimals)} $
@@ -243,7 +243,7 @@ const ClaimScreen = () => {
               </span>
             </div>
 
-            <div className="flex justify-between border-b border-dark-darker py-2 mb-2">
+            <div className="flex justify-between border-b border-[#425152] py-2 mb-2">
               <span className="text-white">Released So Far:</span>
               <span className="font-semibold text-white">
                 {formatTokenAmount(vestingInfo.releasedAmount, tokenDecimals)} $
@@ -251,7 +251,7 @@ const ClaimScreen = () => {
               </span>
             </div>
 
-            <div className="flex justify-between border-b border-dark-darker py-2 mb-2">
+            <div className="flex justify-between border-b border-[#425152] py-2 mb-2">
               <span className="text-white">Currently Available:</span>
               <span className="font-semibold text-primary">
                 {formatTokenAmount(claimableAmount, tokenDecimals)} $
@@ -270,7 +270,7 @@ const ClaimScreen = () => {
             </div>
 
             {/* Progress bar */}
-            <div className="w-full h-6 bg-dark-darker rounded-full overflow-hidden relative mt-4">
+            <div className="w-full h-6 bg-[#425152] rounded-full overflow-hidden relative mt-4">
               <div
                 className="h-full bg-primary rounded-l-full transition-all duration-500"
                 style={{ width: `${calculateReleasePercentage()}%` }}
@@ -303,7 +303,7 @@ const ClaimScreen = () => {
 
       {/* Transaction Hash Display */}
       {transactionHash && (
-        <div className="bg-dark-light border border-dark-darker rounded-md p-4 mb-4 text-center">
+        <div className="bg-dark-light border border-[#425152] rounded-md p-4 mb-4 text-center">
           <p className="text-white mb-2">Transaction Hash:</p>
           <p className="text-primary text-sm break-all">{transactionHash}</p>
         </div>

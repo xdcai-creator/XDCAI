@@ -155,3 +155,20 @@ export const showSuccess = (message) => {
     progress: undefined,
   });
 };
+
+/**
+ * Show a succes toast
+ * @param {string} message - The message to display
+ * @returns {string} - Toast ID
+ */
+export const showError = (message) => {
+  return toast.error(message, {
+    position: "bottom-center",
+    autoClose: 5000,
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    progress: undefined,
+  });
+};
