@@ -1,7 +1,7 @@
 //src/components/WalletOption.jsx
 
 import React, { useEffect, useState } from "react";
-import { MetamaskIcon, CoinbaseWalletIcon, WalletConnectIcon } from "./icons";
+import { MetamaskIcon, CoinbaseWalletIcon, WalletConnectIcon } from "../icons";
 
 // Get icon based on connector ID or name
 const getIconForConnector = (connector) => {

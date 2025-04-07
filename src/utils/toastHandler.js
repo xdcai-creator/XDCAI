@@ -1,4 +1,3 @@
-// src/utils/toastHandler.js
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -94,16 +93,14 @@ export const showProcessingTransaction = () => {
 /**
  * Function to update a toast
  * @param {string} toastId - ID of the toast to update
- * @param {string} message - New message
- * @param {string} type - Type of toast (success, error, info)
+ * @param {Object} options - Options for the toast update
  */
-export const updateToast = (toastId, message, type = "info") => {
+export const updateToast = (toastId, options) => {
   if (!toast.isActive(toastId)) return;
 
   toast.update(toastId, {
-    render: message,
-    type: toast[type] ? type : "info",
-    autoClose: 5000,
+    ...options,
+    autoClose: options.autoClose !== undefined ? options.autoClose : 5000,
     closeButton: true,
   });
 };

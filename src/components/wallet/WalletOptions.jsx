@@ -5,7 +5,7 @@ import { useConnect } from "wagmi";
 import { WalletOption } from "./WalletOption";
 
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { PhantomIcon } from "./icons";
+import { PhantomIcon } from "../icons/CryptoIcons";
 import { useWallet as useSolanaWallet } from "@solana/wallet-adapter-react";
 
 export function WalletOptions({ setSelectedWallet, onError, walletDetectors }) {

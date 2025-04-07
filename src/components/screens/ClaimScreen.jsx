@@ -1,17 +1,22 @@
-// src/components/ClaimScreen.jsx
 import React, { useState, useEffect } from "react";
-import { useAccount } from "wagmi";
-import { useContract } from "../hooks/useContract";
+import { useNavigate } from "react-router-dom";
+import { ethers } from "ethers";
+import { useWallet } from "../../hooks/useWallet";
+import { useNetwork } from "../../context/NetworkContext";
+import { useContract } from "../../hooks/useContract";
 import {
   formatTokenAmount,
-  formatTimestamp,
-  calculateTimeUntilNextVesting,
-} from "../utils/tokenUtils";
+  calculateTimeRemaining,
+} from "../../utils/formatters";
+import NetworkSwitch from "../claim/NetworkSwitch";
 
-export const ClaimScreen = () => {
-  // State for XDC connection
-  const [isXdcConnected, setIsXdcConnected] = useState(false);
-  const { address, isConnected } = useAccount();
+/**
+ * Claim screen for checking vesting status and claiming tokens
+ */
+const ClaimScreen = () => {
+  const navigate = useNavigate();
+  const { address, isConnected } = useWallet();
+  const { isXdcConnected, connectToXdcNetwork, isConnecting } = useNetwork();
 
   // Contract hooks
   const {
@@ -46,31 +51,14 @@ export const ClaimScreen = () => {
     seconds: 0,
   });
   const [transactionHash, setTransactionHash] = useState(null);
-
-  // Connect to XDC Network
-  const connectToXdcNetwork = async () => {
-    try {
-      setError(null);
-      setIsProcessing(true);
-
-      // Here you would implement your XDC network connection logic
-      // This is a placeholder - actual implementation would connect to XDC
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setIsXdcConnected(true);
-    } catch (error) {
-      console.error("XDC connection error:", error);
-      setError("Failed to connect to XDC network. Please try again.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  const [showNetworkDetails, setShowNetworkDetails] = useState(false);
 
   // Fetch vesting information when contracts are loaded and address is connected
   useEffect(() => {
     const fetchVestingInfo = async () => {
       try {
-        if (!presaleContract || !address || presaleLoading) return;
+        if (!presaleContract || !address || presaleLoading || !isXdcConnected)
+          return;
 
         setError(null);
 
@@ -101,7 +89,7 @@ export const ClaimScreen = () => {
       }
     };
 
-    if (isConnected && address && presaleContract) {
+    if (isConnected && isXdcConnected && address && presaleContract) {
       fetchVestingInfo();
     }
   }, [
@@ -111,6 +99,7 @@ export const ClaimScreen = () => {
     tokenLoading,
     address,
     isConnected,
+    isXdcConnected,
   ]);
 
   // Update timer for next vesting release
@@ -119,9 +108,7 @@ export const ClaimScreen = () => {
       return;
 
     const intervalId = setInterval(() => {
-      const timeLeft = calculateTimeUntilNextVesting(
-        vestingInfo.nextUnlockTime
-      );
+      const timeLeft = calculateTimeRemaining(vestingInfo.nextUnlockTime);
       setTimeUntilNextRelease(timeLeft);
     }, 1000);
 
@@ -204,137 +191,77 @@ export const ClaimScreen = () => {
   };
 
   return (
-    <div
-      className="claim-screen p-8"
-      // style={{ maxWidth: "600px", margin: "0 auto", padding: "20px 0" }}
-    >
-      <h2
-        style={{ textAlign: "center", fontSize: "28px", margin: "0 0 20px 0" }}
-      >
+    <div className="p-6 max-w-md mx-auto">
+      <h2 className="text-xl font-bold text-center text-white mb-6">
         Claim Your ${tokenSymbol} Tokens
       </h2>
 
-      {/* XDC Network Connection */}
+      {/* XDC Network Connection Section */}
       {!isXdcConnected && (
-        <div style={{ marginBottom: "20px" }}>
-          <div
-            style={{
-              backgroundColor: "rgba(255, 200, 0, 0.1)",
-              padding: "15px",
-              borderRadius: "10px",
-              border: "1px solid #FFB74D",
-              marginBottom: "15px",
-              textAlign: "center",
-            }}
-          >
-            <p style={{ margin: "0 0 10px 0", color: "#FFB74D" }}>
+        <div className="mb-6">
+          <div className="bg-accent-red/10 border border-accent-red rounded-md p-4 mb-4 text-center">
+            <p className="text-accent-red">
               Please connect to the XDC Network to claim your tokens
             </p>
           </div>
 
           <button
-            className="xdc-connect-button"
-            onClick={connectToXdcNetwork}
-            style={{
-              width: "100%",
-              backgroundColor: "#112211",
-              border: "1px solid #00FA73",
-              borderRadius: "10px",
-              color: "white",
-              fontSize: "16px",
-              padding: "15px 20px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              cursor: "pointer",
-              marginBottom: "20px",
+            onClick={() => {
+              connectToXdcNetwork();
+              setShowNetworkDetails(true);
             }}
+            disabled={isConnecting}
+            className={`w-full py-3 px-4 bg-dark-light border border-primary rounded-md text-white flex justify-between items-center
+              ${
+                isConnecting
+                  ? "opacity-70 cursor-not-allowed"
+                  : "cursor-pointer hover:border-primary-light"
+              }`}
           >
             <span>Connect to XDC Network</span>
-            <span style={{ fontWeight: "bold", color: "#00FA73" }}>XDC</span>
+            <span className="font-bold text-primary">XDC</span>
           </button>
         </div>
       )}
 
+      {/* Show network details if trying to connect */}
+      {showNetworkDetails && !isXdcConnected && <NetworkSwitch />}
+
       {/* Vesting Information */}
-      <div
-        style={{
-          backgroundColor: "#1a1a1a",
-          border: "1px solid #333",
-          borderRadius: "10px",
-          padding: "20px",
-          marginBottom: "20px",
-        }}
-      >
-        <h3
-          style={{
-            margin: "0 0 15px 0",
-            color: "#00FA73",
-            textAlign: "center",
-          }}
-        >
+      <div className="bg-dark-light border border-dark-darker rounded-md p-5 mb-6">
+        <h3 className="text-lg font-semibold text-primary text-center mb-4">
           Your Vesting Summary
         </h3>
 
         {BigInt(vestingInfo.totalAmount) > BigInt(0) ? (
           <>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                borderBottom: "1px solid #333",
-                paddingBottom: "10px",
-                marginBottom: "10px",
-              }}
-            >
-              <span>Total Purchased:</span>
-              <span style={{ fontWeight: "bold" }}>
+            <div className="flex justify-between border-b border-dark-darker py-2 mb-2">
+              <span className="text-white">Total Purchased:</span>
+              <span className="font-semibold text-white">
                 {formatTokenAmount(vestingInfo.totalAmount, tokenDecimals)} $
                 {tokenSymbol}
               </span>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                borderBottom: "1px solid #333",
-                paddingBottom: "10px",
-                marginBottom: "10px",
-              }}
-            >
-              <span>Released So Far:</span>
-              <span style={{ fontWeight: "bold" }}>
+            <div className="flex justify-between border-b border-dark-darker py-2 mb-2">
+              <span className="text-white">Released So Far:</span>
+              <span className="font-semibold text-white">
                 {formatTokenAmount(vestingInfo.releasedAmount, tokenDecimals)} $
                 {tokenSymbol}
               </span>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                borderBottom: "1px solid #333",
-                paddingBottom: "10px",
-                marginBottom: "10px",
-              }}
-            >
-              <span>Currently Available:</span>
-              <span style={{ fontWeight: "bold", color: "#00FA73" }}>
+            <div className="flex justify-between border-b border-dark-darker py-2 mb-2">
+              <span className="text-white">Currently Available:</span>
+              <span className="font-semibold text-primary">
                 {formatTokenAmount(claimableAmount, tokenDecimals)} $
                 {tokenSymbol}
               </span>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: "15px",
-              }}
-            >
-              <span>Next Release:</span>
-              <span style={{ fontWeight: "bold" }}>
+            <div className="flex justify-between py-2 mb-4">
+              <span className="text-white">Next Release:</span>
+              <span className="font-semibold text-white">
                 {vestingInfo.nextUnlockTime &&
                 vestingInfo.nextUnlockTime !== "0"
                   ? `${timeUntilNextRelease.days}d ${timeUntilNextRelease.hours}h ${timeUntilNextRelease.minutes}m`
@@ -343,107 +270,46 @@ export const ClaimScreen = () => {
             </div>
 
             {/* Progress bar */}
-            <div
-              style={{
-                width: "100%",
-                height: "24px",
-                backgroundColor: "#333",
-                borderRadius: "12px",
-                overflow: "hidden",
-                marginTop: "20px",
-                position: "relative",
-              }}
-            >
+            <div className="w-full h-6 bg-dark-darker rounded-full overflow-hidden relative mt-4">
               <div
-                style={{
-                  width: `${calculateReleasePercentage()}%`,
-                  height: "100%",
-                  backgroundColor: "#00FA73",
-                  borderRadius: "12px 0 0 12px",
-                  transition: "width 0.5s ease-in-out",
-                }}
+                className="h-full bg-primary rounded-l-full transition-all duration-500"
+                style={{ width: `${calculateReleasePercentage()}%` }}
               ></div>
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: "100%",
-                  height: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#fff",
-                  fontWeight: "bold",
-                  fontSize: "12px",
-                }}
-              >
+              <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-white">
                 {calculateReleasePercentage()}% Released
               </div>
             </div>
           </>
         ) : (
-          <p style={{ textAlign: "center", color: "#aaa" }}>
+          <p className="text-center text-gray-light py-4">
             You don't have any ${tokenSymbol} tokens to claim. Purchase tokens
             first.
           </p>
         )}
       </div>
 
-      {/* Error message */}
+      {/* Error and Success Messages */}
       {error && (
-        <div
-          style={{
-            textAlign: "center",
-            color: "#ff6b6b",
-            backgroundColor: "rgba(100, 0, 0, 0.2)",
-            padding: "15px",
-            borderRadius: "5px",
-            marginBottom: "20px",
-          }}
-        >
+        <div className="bg-accent-red/20 border border-accent-red rounded-md p-4 mb-4 text-center text-accent-red">
           {error}
         </div>
       )}
 
-      {/* Success message */}
       {success && (
-        <div
-          style={{
-            textAlign: "center",
-            color: "#00FA73",
-            backgroundColor: "rgba(0, 100, 0, 0.2)",
-            padding: "15px",
-            borderRadius: "5px",
-            marginBottom: "20px",
-          }}
-        >
+        <div className="bg-primary/20 border border-primary rounded-md p-4 mb-4 text-center text-primary">
           Tokens claimed successfully!
         </div>
       )}
 
-      {/* Transaction hash display */}
+      {/* Transaction Hash Display */}
       {transactionHash && (
-        <div
-          style={{
-            textAlign: "center",
-            backgroundColor: "rgba(0, 0, 0, 0.2)",
-            padding: "15px",
-            borderRadius: "5px",
-            marginBottom: "20px",
-            wordBreak: "break-all",
-          }}
-        >
-          <p style={{ color: "white", marginBottom: "5px" }}>
-            Transaction Hash:
-          </p>
-          <p style={{ color: "#00FA73", fontSize: "14px" }}>
-            {transactionHash}
-          </p>
+        <div className="bg-dark-light border border-dark-darker rounded-md p-4 mb-4 text-center">
+          <p className="text-white mb-2">Transaction Hash:</p>
+          <p className="text-primary text-sm break-all">{transactionHash}</p>
         </div>
       )}
 
-      {/* Claim button */}
+      {/* Claim Button */}
       <button
         onClick={handleClaim}
         disabled={
@@ -451,29 +317,14 @@ export const ClaimScreen = () => {
           BigInt(claimableAmount) <= BigInt(0) ||
           isProcessing
         }
-        style={{
-          width: "100%",
-          backgroundColor:
+        className={`w-full py-4 text-lg font-bold text-dark rounded-md
+          ${
             !isXdcConnected ||
             BigInt(claimableAmount) <= BigInt(0) ||
             isProcessing
-              ? "#5a8f5a"
-              : "#00FA73",
-          border: "none",
-          borderRadius: "8px",
-          padding: "17px",
-          fontSize: "20px",
-          fontWeight: "bold",
-          color: "black",
-          cursor:
-            !isXdcConnected ||
-            BigInt(claimableAmount) <= BigInt(0) ||
-            isProcessing
-              ? "not-allowed"
-              : "pointer",
-          marginBottom: "15px",
-          height: "60px",
-        }}
+              ? "bg-primary-dark cursor-not-allowed"
+              : "bg-primary cursor-pointer hover:bg-primary-light"
+          }`}
       >
         {isProcessing
           ? "PROCESSING..."

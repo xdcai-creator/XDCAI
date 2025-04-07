@@ -16,7 +16,7 @@ const config = {
   networkIds: {
     ethereum: {
       mainnet: 1,
-      testnet: 5, // Goerli
+      testnet: 11155111, // Sepolia
     },
     bsc: {
       mainnet: 56,
@@ -141,10 +141,10 @@ const config = {
   explorers: {
     ethereum: {
       txUrl: useTestnets
-        ? "https://goerli.etherscan.io/tx/"
+        ? "https://sepolia.etherscan.io/tx/"
         : "https://etherscan.io/tx/",
       addressUrl: useTestnets
-        ? "https://goerli.etherscan.io/address/"
+        ? "https://sepolia.etherscan.io/address/"
         : "https://etherscan.io/address/",
     },
     bsc: {

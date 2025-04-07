@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Example of custom CSS variables */
+:root {
+  --primary: #00FA73;
+  --dark-darker:#425152;
+  /* --secondary: #9333ea;
+  --bg-color: #f9fafb; */
+}
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }

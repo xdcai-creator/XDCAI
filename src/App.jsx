@@ -1,7 +1,6 @@
-// src/App.jsx
 import "./buffer-polyfill";
 
-import React, { useMemo } from "react";
+import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { WagmiProvider } from "wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -21,12 +20,13 @@ import "@solana/wallet-adapter-react-ui/styles.css";
 // Custom Solana context
 import { SolanaWalletProvider } from "./components/wallet/SolanaWalletContext";
 
-import { config } from "./components/config";
+import { config } from "./config/chainConfig";
 import XDCAIPurchaseFlow from "./components/XDCAIPurchaseFlow";
 import AdminLogin from "./components/admin/AdminLogin";
 import ContributionsDashboard from "./components/admin/ContributionsDashboard";
 import { authService } from "./services/api";
 import "./App.css";
+import { NetworkProvider } from "./context/NetworkContext";
 
 // Create a React Query client
 const queryClient = new QueryClient();
@@ -38,10 +38,10 @@ const AdminRoute = ({ children }) => {
 
 function App() {
   // Setup Solana wallets
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+  const wallets = React.useMemo(() => [new PhantomWalletAdapter()], []);
 
   // Get Solana network endpoint from environment or default to devnet
-  const endpoint = useMemo(() => {
+  const endpoint = React.useMemo(() => {
     return import.meta.env.VITE_SOLANA_PROVIDER_URL || clusterApiUrl("devnet");
   }, []);
 
@@ -54,38 +54,41 @@ function App() {
             <WalletModalProvider>
               {/* Custom Solana wallet provider with additional utilities */}
               <SolanaWalletProvider>
-                <div className="app">
-                  <ToastContainer
-                    position="top-right"
-                    autoClose={5000}
-                    hideProgressBar={false}
-                    newestOnTop
-                    closeOnClick
-                    rtl={false}
-                    pauseOnFocusLoss
-                    draggable
-                    pauseOnHover
-                    theme="dark"
-                  />
+                {/* to determine if in testnet */}
+                <NetworkProvider>
+                  <div className="app">
+                    <ToastContainer
+                      position="top-right"
+                      autoClose={5000}
+                      hideProgressBar={false}
+                      newestOnTop
+                      closeOnClick
+                      rtl={false}
+                      pauseOnFocusLoss
+                      draggable
+                      pauseOnHover
+                      theme="dark"
+                    />
 
-                  <Router>
-                    <Routes>
-                      {/* Admin routes */}
-                      <Route path="/admin/login" element={<AdminLogin />} />
-                      <Route
-                        path="/admin/*"
-                        element={
-                          <AdminRoute>
-                            <ContributionsDashboard />
-                          </AdminRoute>
-                        }
-                      />
+                    <Router>
+                      <Routes>
+                        {/* Admin routes */}
+                        <Route path="/admin/login" element={<AdminLogin />} />
+                        <Route
+                          path="/admin/*"
+                          element={
+                            <AdminRoute>
+                              <ContributionsDashboard />
+                            </AdminRoute>
+                          }
+                        />
 
-                      {/* Public routes - handled by XDCAIPurchaseFlow */}
-                      <Route path="/*" element={<XDCAIPurchaseFlow />} />
-                    </Routes>
-                  </Router>
-                </div>
+                        {/* Public routes - handled by XDCAIPurchaseFlow */}
+                        <Route path="/*" element={<XDCAIPurchaseFlow />} />
+                      </Routes>
+                    </Router>
+                  </div>
+                </NetworkProvider>
               </SolanaWalletProvider>
             </WalletModalProvider>
           </WalletProvider>

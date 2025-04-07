@@ -1,7 +1,10 @@
-// src/components/InitialScreen.jsx
+// src/components/screens/InitialScreen.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
+/**
+ * Initial welcome screen of the application
+ */
 export const InitialScreen = () => {
   const navigate = useNavigate();
 
@@ -35,7 +38,7 @@ export const InitialScreen = () => {
           <span className="help-icon">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              xmlns:xlink="http://www.w3.org/1999/xlink"
+              xmlnsXlink="http://www.w3.org/1999/xlink"
               width="22"
               height="22"
               viewBox="0 0 22 22"
@@ -56,7 +59,7 @@ export const InitialScreen = () => {
                 id="Mask_Group_52"
                 data-name="Mask Group 52"
                 transform="translate(-268 -636)"
-                clip-path="url(#clip-path)"
+                clipPath="url(#clip-path)"
               >
                 <path
                   id="info"
@@ -73,7 +76,7 @@ export const InitialScreen = () => {
           <span className="help-icon">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              xmlns:xlink="http://www.w3.org/1999/xlink"
+              xmlnsXlink="http://www.w3.org/1999/xlink"
               width="22"
               height="22"
               viewBox="0 0 22 22"
@@ -94,7 +97,7 @@ export const InitialScreen = () => {
                 id="Mask_Group_53"
                 data-name="Mask Group 53"
                 transform="translate(-268 -636)"
-                clip-path="url(#clip-path)"
+                clipPath="url(#clip-path)"
               >
                 <g id="question" transform="translate(267.267 635.267)">
                   <path

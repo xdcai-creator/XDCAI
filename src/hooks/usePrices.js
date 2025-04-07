@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   fetchCurrentPrices,
   getPrepurchaseQuote,
-} from "../services/pricing/priceService";
+} from "../services/priceService";
 import { contractApi } from "../services/api";
 
 /**
