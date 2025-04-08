@@ -1,12 +1,47 @@
 @import "tailwindcss";
 
-/* Example of custom CSS variables */
-:root {
-  --primary: #00FA73;
-  --dark-darker:#425152;
-  /* --secondary: #9333ea;
-  --bg-color: #f9fafb; */
+@theme {
+  /* Primary colors */
+  --color-primary-light: #00FA73;
+  --color-primary: #00D54B;
+  --color-primary-dark: #118C4F;
+
+  /* Secondary colors */
+  --color-secondary-light: #FFD700;
+  --color-secondary: #F3BA2F;
+  --color-secondary-dark: #E49B0F;
+
+  /* Dark palette */
+  --color-dark-lighter: #232323;
+  --color-dark-light: #1A1A1A;
+  --color-dark: #121212;
+  --color-dark-dark: #0C0C0C;
+  --color-dark-darker: #000000;
+
+  /* Accent colors */
+  --color-accent-blue: #1da1f2;
+  --color-accent-purple: #9945FF;
+  --color-accent-red: #ff4c4c;
+  --color-accent-pink: #FF52A2;
+
+  /* Gray scale */
+  --color-gray-lightest: #f5f5f5;
+  --color-gray-lighter: #d4d4d4;
+  --color-gray-light: #a3a3a3;
+  --color-gray: #737373;
+  --color-gray-dark: #525252;
+  --color-gray-darker: #303030;
+  --color-gray-darkest: #171717;
+
+  /* Fonts */
+  --font-sans: "Inter", Arial, sans-serif;
+
+  /* Border radius */
+  --radius-widget: 16px;
+
+  /* Shadows would need to be defined with specific variables */
 }
+
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
@@ -55,7 +90,7 @@ h1 {
 
 button {
   border-radius: 8px;
-  border: 1px solid transparent;
+  /* border: 1px solid transparent; */
   padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;

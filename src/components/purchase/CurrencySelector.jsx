@@ -142,9 +142,9 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
       </div>
 
       {/* Network tabs */}
-      <div className="flex mb-4 overflow-x-auto scrollbar-hide h-[50px] space-x-2 px-2">
+      <div className="flex mb-4 overflow-x-auto scrollbar-hide h-[50px] space-x-2 px-2 py-1 ">
         <button
-          className={`flex-shrink-0 px-4 py-2 text-sm whitespace-nowrap ${
+          className={`border border-[#425152] flex-shrink-0 px-4 py-2 text-sm whitespace-nowrap ${
             activeTab === "ALL"
               ? "bg-primary text-dark font-medium"
               : "bg-dark-light text-gray-light"
@@ -154,7 +154,7 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
           ALL
         </button>
         <button
-          className={`flex-shrink-0 px-4 py-2 text-sm flex items-center whitespace-nowrap ${
+          className={`border border-[#425152]  flex-shrink-0 px-4 py-2 text-sm flex items-center whitespace-nowrap ${
             activeTab === "ETH"
               ? "bg-primary text-dark font-medium"
               : "bg-dark-light text-gray-light"
@@ -164,7 +164,7 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
           <span>ETH</span>
         </button>
         <button
-          className={`flex-shrink-0 px-4 py-2 text-sm flex items-center whitespace-nowrap ${
+          className={`border border-[#425152] flex-shrink-0 px-4 py-2 text-sm flex items-center whitespace-nowrap ${
             activeTab === "BSC"
               ? "bg-primary text-dark font-medium"
               : "bg-dark-light text-gray-light"
@@ -174,7 +174,7 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
           <span>BSC</span>
         </button>
         <button
-          className={`flex-shrink-0 px-4 py-2 text-sm flex items-center whitespace-nowrap ${
+          className={`border border-[#425152] flex-shrink-0 px-4 py-2 text-sm flex items-center whitespace-nowrap ${
             activeTab === "SOL"
               ? "bg-primary text-dark font-medium"
               : "bg-dark-light text-gray-light"
@@ -184,7 +184,7 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
           <span>SOL</span>
         </button>
         <button
-          className={`flex-shrink-0 px-4 py-2 text-sm flex items-center whitespace-nowrap ${
+          className={`border border-[#425152] flex-shrink-0 px-4 py-2 text-sm flex items-center whitespace-nowrap ${
             activeTab === "XDC"
               ? "bg-primary text-dark font-medium"
               : "bg-dark-light text-gray-light"

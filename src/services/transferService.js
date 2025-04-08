@@ -23,6 +23,19 @@ import {
 } from "@solana/spl-token";
 import { toast } from "react-toastify";
 
+const SOLANA_RPC_ENDPOINTS = {
+  mainnet: [
+    "https://api.mainnet-beta.solana.com",
+    "https://solana-api.projectserum.com",
+    "https://rpc.ankr.com/solana",
+  ],
+  devnet: [
+    "https://api.devnet.solana.com",
+    "https://devnet.genesysgo.net",
+    "https://rpc.ankr.com/solana_devnet",
+  ],
+};
+
 // Simple ERC-20 ABI for token transfers
 const ERC20_ABI = [
   "function transfer(address to, uint256 value) returns (bool)",
@@ -49,6 +62,37 @@ const TOKEN_ADDRESSES = {
 const SPL_TOKEN_MINTS = {
   "USDT-SOL": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB", // USDT mainnet
   "USDC-SOL": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC mainnet
+};
+
+// 2. Create a function to get a working Solana connection with fallbacks
+export const getSolanaConnection = async (isTestnet = false) => {
+  const endpoints = isTestnet
+    ? SOLANA_RPC_ENDPOINTS.devnet
+    : SOLANA_RPC_ENDPOINTS.mainnet;
+
+  // Try each endpoint until one works
+  for (const endpoint of endpoints) {
+    try {
+      const connection = new Connection(endpoint, "confirmed");
+
+      // Test the connection by making a simple request
+      await connection.getVersion();
+      console.log(
+        `Connected to Solana ${
+          isTestnet ? "devnet" : "mainnet"
+        } using ${endpoint}`
+      );
+      return connection;
+    } catch (error) {
+      console.warn(
+        `Failed to connect to Solana endpoint ${endpoint}:`,
+        error.message
+      );
+      // Continue to the next endpoint if this one fails
+    }
+  }
+
+  throw new Error("Unable to connect to any Solana RPC endpoint");
 };
 
 /**
@@ -445,6 +489,9 @@ export const transferERC20Token = async ({
     // Parse amount with correct decimals
     const parsedAmount = ethers.utils.parseUnits(amount, decimals);
 
+    // Approve 110% of the required amount (small buffer for potential price fluctuations)
+    const approvalAmount = parsedAmount.mul(110).div(100);
+
     // Check and update allowance with a timeout
     try {
       const allowance = await Promise.race([
@@ -465,7 +512,7 @@ export const transferERC20Token = async ({
 
         const approveTx = await tokenContract.approve(
           toAddress,
-          ethers.constants.MaxUint256,
+          approvalAmount, // Use limited approval instead of MaxUint256
           { gasLimit: ethers.utils.hexlify(150000) }
         );
 
@@ -519,8 +566,26 @@ export const transferSOL = async ({ amount, connection, wallet }) => {
       throw new Error("Wallet not connected");
     }
 
+    // If connection is not working, get a new one
+    let reliableConnection = connection;
+    try {
+      await connection.getVersion();
+    } catch (error) {
+      console.warn(
+        "Provided Solana connection failed, creating a new one:",
+        error.message
+      );
+      const isTestnet = import.meta.env.VITE_USE_TESTNET === "true";
+      reliableConnection = await getSolanaConnection(isTestnet);
+    }
+
     const toAddress = new PublicKey(VITE_OWNER_SOLANA_ADDRESS);
     const fromAddress = wallet.publicKey;
+
+    // Use a higher commitment level for more reliable transactions
+    const blockhashInfo = await reliableConnection.getLatestBlockhash(
+      "finalized"
+    );
 
     // Create a transfer instruction
     const transaction = new Transaction().add(
@@ -531,26 +596,63 @@ export const transferSOL = async ({ amount, connection, wallet }) => {
       })
     );
 
-    // Sign and send the transaction
-    const signature = await wallet.sendTransaction(transaction, connection);
+    // Set the blockhash and recent blockhash fields
+    transaction.recentBlockhash = blockhashInfo.blockhash;
+    transaction.lastValidBlockHeight = blockhashInfo.lastValidBlockHeight;
+    transaction.feePayer = fromAddress;
 
-    // Wait for confirmation
-    await connection.confirmTransaction(signature);
+    // Sign and send the transaction with proper error handling
+    try {
+      const signature = await wallet.sendTransaction(
+        transaction,
+        reliableConnection
+      );
 
-    console.log(
-      `SOL transfer completed: ${amount}, from: ${fromAddress.toString()}, to: ${toAddress.toString()}`
-    );
-    console.log(`Transaction signature: ${signature}`);
+      // Wait for confirmation with a reasonable timeout
+      const confirmation = await Promise.race([
+        reliableConnection.confirmTransaction({
+          signature,
+          blockhash: blockhashInfo.blockhash,
+          lastValidBlockHeight: blockhashInfo.lastValidBlockHeight,
+        }),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Transaction confirmation timeout")),
+            60000
+          )
+        ),
+      ]);
 
-    return {
-      success: true,
-      transactionHash: signature,
-      amount,
-      fromAddress: fromAddress.toString(),
-      toAddress: toAddress.toString(),
-      chain: "solana",
-      token: "SOL",
-    };
+      console.log(`SOL transfer completed with signature: ${signature}`);
+
+      return {
+        success: true,
+        transactionHash: signature,
+        amount,
+        fromAddress: fromAddress.toString(),
+        toAddress: toAddress.toString(),
+        chain: "solana",
+        token: "SOL",
+      };
+    } catch (signError) {
+      // Provide more helpful error messages based on error type
+      if (
+        signError.message.includes("403") ||
+        signError.message.includes("forbidden")
+      ) {
+        throw new Error(
+          "Connection to Solana network denied. Please try again later or use a different wallet."
+        );
+      } else if (signError.message.includes("timeout")) {
+        throw new Error(
+          "Transaction timed out. The network may be congested - please try again later."
+        );
+      } else if (signError.message.includes("User rejected")) {
+        throw new Error("Transaction was rejected in your wallet.");
+      } else {
+        throw signError;
+      }
+    }
   } catch (error) {
     console.error(`SOL transfer error:`, error);
     throw error;

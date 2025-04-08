@@ -83,9 +83,7 @@ export const contributionsApi = {
 
   // Check if user has registered email
   checkUserEmail: async (walletAddress) => {
-    const response = await apiClient.get(
-      `/api/users/walletAddress?walletAddress=${walletAddress}`
-    );
+    const response = await apiClient.get(`/api/users/${walletAddress}`);
     return response.data;
   },
 };
@@ -122,6 +120,9 @@ export const adminApi = {
 
     // Always add admin=true for admin dashboard
     params.append("admin", "true");
+
+    if (options.walletAddress)
+      params.append("walletAddress", options.walletAddress?.toLowerCase());
 
     // Add pagination
     if (options.limit) params.append("limit", options.limit.toString());

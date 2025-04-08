@@ -32,25 +32,51 @@ export const NetworkProvider = ({ children }) => {
   // Listen for ethereum provider chain changes
   useEffect(() => {
     if (window.ethereum) {
-      const handleChainChanged = (chainIdHex) => {
+      const handleChainChanged = async (chainIdHex) => {
         const chainIdDecimal = parseInt(chainIdHex, 16);
         setCurrentChainId(chainIdDecimal);
 
         // Check if XDC network
         const targetChainId = networkConfig.isTestnet ? 51 : 50;
-        setIsXdcConnected(chainIdDecimal === targetChainId);
+
+        // Check if we're on XDC network AND have an account connected
+        const isOnXdc = chainIdDecimal === targetChainId;
+
+        if (isOnXdc) {
+          try {
+            // Check if we have an account
+            const accounts = await window.ethereum.request({
+              method: "eth_accounts",
+            });
+            setIsXdcConnected(isOnXdc && accounts && accounts.length > 0);
+          } catch (err) {
+            console.error("Error checking accounts:", err);
+            setIsXdcConnected(false);
+          }
+        } else {
+          setIsXdcConnected(false);
+        }
       };
 
-      // Check current chain when component mounts
-      window.ethereum
-        .request({ method: "eth_chainId" })
-        .then((chainIdHex) => handleChainChanged(chainIdHex))
-        .catch((err) => console.error("Error getting chain ID:", err));
+      // Initial check
+      const checkCurrentChain = async () => {
+        try {
+          const chainIdHex = await window.ethereum.request({
+            method: "eth_chainId",
+          });
+          await handleChainChanged(chainIdHex);
+        } catch (err) {
+          console.error("Error getting chain ID:", err);
+        }
+      };
 
+      checkCurrentChain();
       window.ethereum.on("chainChanged", handleChainChanged);
+      window.ethereum.on("accountsChanged", checkCurrentChain);
 
       return () => {
         window.ethereum.removeListener("chainChanged", handleChainChanged);
+        window.ethereum.removeListener("accountsChanged", checkCurrentChain);
       };
     }
   }, []);
@@ -61,15 +87,49 @@ export const NetworkProvider = ({ children }) => {
       setNetworkError(null);
       setIsConnecting(true);
 
-      // Use utility function to switch to XDC network
+      // First ensure we have wallet authorization - ask for accounts first
+      const accounts = await window.ethereum.request({
+        method: "eth_requestAccounts",
+      });
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts authorized");
+      }
+
+      // Then switch to XDC network
       await switchToXdcNetwork(networkConfig.isTestnet);
 
-      // If we get here, the network switch was successful
+      // Verify chain ID after switching
+      const chainIdHex = await window.ethereum.request({
+        method: "eth_chainId",
+      });
+      const chainIdDecimal = parseInt(chainIdHex, 16);
+      const targetChainId = networkConfig.isTestnet ? 51 : 50;
+
+      if (chainIdDecimal !== targetChainId) {
+        throw new Error("Failed to switch to XDC network");
+      }
+
+      // Double-check accounts after network switch (some wallets disconnect on network change)
+      const accountsAfterSwitch = await window.ethereum.request({
+        method: "eth_accounts",
+      });
+
+      if (!accountsAfterSwitch || accountsAfterSwitch.length === 0) {
+        throw new Error("Account access lost after network switch");
+      }
+
+      // All checks passed - we have the right network and authorized accounts
+      console.log("XDC connection successful:", {
+        chain: chainIdDecimal,
+        account: accountsAfterSwitch[0],
+      });
+
       setIsXdcConnected(true);
       return true;
     } catch (error) {
       console.error("XDC network connection error:", error);
-      setNetworkError("Failed to connect to XDC network. Please try again.");
+      setNetworkError(`Failed to connect to XDC network: ${error.message}`);
       setIsXdcConnected(false);
       return false;
     } finally {

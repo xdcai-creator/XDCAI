@@ -412,7 +412,7 @@ const PurchaseScreen = () => {
           updateToast(processingToastId, {
             render: "Transaction submitted successfully!",
             autoClose: 3000,
-            type: toast.TYPE.SUCCESS,
+            type: "SUCCESS", //toast.TYPE.SUCCESS,
           });
 
           setProcessingStep("Transaction complete!");
@@ -432,6 +432,8 @@ const PurchaseScreen = () => {
             bonusTokens: bonusAmount.toString() || "0",
             hash: transferResult.transactionHash || "",
             usdValue,
+            senderAddress: transferResult.fromAddress,
+            sourceChain: transferResult.chain,
           };
 
           localStorage.setItem("xdcai_tx_details", JSON.stringify(txDetails));
