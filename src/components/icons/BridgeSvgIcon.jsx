@@ -1,7 +1,7 @@
 import React from "react";
 
 // Bridge icon component
-const BridgeIcon = ({
+const BridgeSvgIcon = ({
   Icon1 = "ETH",
   Icon2 = "BNB",
   className = "",
@@ -44,4 +44,4 @@ const BridgeIcon = ({
   );
 };
 
-export default BridgeIcon;
+export default BridgeSvgIcon;

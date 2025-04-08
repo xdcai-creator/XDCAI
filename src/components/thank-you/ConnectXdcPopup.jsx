@@ -69,7 +69,7 @@ const ConnectXdcPopup = ({
           //   setCurrentStep("confirm");
           toast.success("Connected to XDC Network!");
 
-          handleConfirmAddress();
+          handleConfirmAddress(accounts[0]);
 
           // Close popup and proceed to claim
           //   setShowConnectXdcPopup(false);
@@ -88,8 +88,9 @@ const ConnectXdcPopup = ({
   };
 
   // Handle confirming the XDC address
-  const handleConfirmAddress = async () => {
-    if (!xdcAddress) {
+  const handleConfirmAddress = async (_address) => {
+    let _xdcAddress = xdcAddress || _address;
+    if (!_xdcAddress) {
       toast.error("No XDC address available");
       return;
     }
@@ -101,7 +102,7 @@ const ConnectXdcPopup = ({
       // Update the XDC claim address using the API
       await contributionsApi.updateClaimAddress(
         contributionId,
-        xdcAddress // Use the detected XDC address
+        _xdcAddress // Use the detected XDC address
       );
 
       setIsAddressConfirmed(true);

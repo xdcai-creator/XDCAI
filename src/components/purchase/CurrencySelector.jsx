@@ -1,6 +1,43 @@
 import React, { useState, useEffect } from "react";
 import { useNetwork } from "../../context/NetworkContext";
 import CryptoIcon from "../common/CryptoIcon";
+import BridgeSvgIcon from "../icons/BridgeSvgIcon";
+import * as Icons from "../icons/CryptoIcons";
+
+export const getCurrencyLogo = (symbol) => {
+  if (svgIconToSymbolMatcher[symbol]) return svgIconToSymbolMatcher[symbol];
+};
+
+const svgIconToSymbolMatcher = {
+  ETH: <Icons.EthereumIcon />,
+  BNB: (
+    <div className="scale-[2] ml-2">
+      <Icons.BinanceIcon />
+    </div>
+  ),
+  SOL: (
+    <div className="scale-[1.8] ml-2">
+      <Icons.SolanaIcon />
+    </div>
+  ),
+  "USDT-ETH": (
+    <BridgeSvgIcon Icon1={Icons.TetherIcon} Icon2={Icons.EthereumIcon} />
+  ),
+  "USDT-BNB": (
+    <BridgeSvgIcon Icon1={Icons.TetherIcon} Icon2={Icons.BinanceIcon} />
+  ),
+  "USDT-SOL": (
+    <BridgeSvgIcon Icon1={Icons.TetherIcon} Icon2={Icons.SolanaIcon} />
+  ),
+  "USDC-ETH": (
+    <BridgeSvgIcon Icon1={Icons.USDCIcon} Icon2={Icons.EthereumIcon} />
+  ),
+  "USDC-BNB": (
+    <BridgeSvgIcon Icon1={Icons.USDCIcon} Icon2={Icons.BinanceIcon} />
+  ),
+  "USDC-SOL": <BridgeSvgIcon Icon1={Icons.USDCIcon} Icon2={Icons.SolanaIcon} />,
+  XDC: <Icons.XDCIcon />,
+};
 
 /**
  * Currency selection component for the purchase flow
@@ -13,12 +50,12 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
 
   // List of supported coins with network information
   const coinData = [
-    {
-      symbol: "XDC",
-      name: "XDC",
-      network: "XDC",
-      enabled: true, // Always enabled
-    },
+    // {
+    //   symbol: "XDC",
+    //   name: "XDC",
+    //   network: "XDC",
+    //   enabled: true, // Always enabled
+    // },
     {
       symbol: "ETH",
       name: "Ethereum",
@@ -38,13 +75,13 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
       enabled: !isTestnet || (isTestnet && true), // Enable on testnet for testing
     },
     {
-      symbol: "USDT",
+      symbol: "USDT-ETH",
       name: "USDT",
       network: "ETH",
       enabled: !isTestnet || (isTestnet && true), // Enable on testnet for testing
     },
     {
-      symbol: "USDC",
+      symbol: "USDC-ETH",
       name: "USD Coin",
       network: "ETH",
       enabled: !isTestnet || (isTestnet && true), // Enable on testnet for testing
@@ -161,6 +198,7 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
           } rounded-md space-x-2 transition-colors`}
           onClick={() => setActiveTab("ETH")}
         >
+          <Icons.EthereumIcon className="scale-[0.6]" />
           <span>ETH</span>
         </button>
         <button
@@ -171,6 +209,9 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
           } rounded-md space-x-2 transition-colors`}
           onClick={() => setActiveTab("BSC")}
         >
+          <div className="scale-[1.5]">
+            <Icons.BinanceIcon />
+          </div>
           <span>BSC</span>
         </button>
         <button
@@ -181,9 +222,12 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
           } rounded-md space-x-2 transition-colors`}
           onClick={() => setActiveTab("SOL")}
         >
+          <div className="scale-[1.5]">
+            <Icons.SolanaIcon />
+          </div>
           <span>SOL</span>
         </button>
-        <button
+        {/* <button
           className={`border border-[#425152] flex-shrink-0 px-4 py-2 text-sm flex items-center whitespace-nowrap ${
             activeTab === "XDC"
               ? "bg-primary text-dark font-medium"
@@ -192,7 +236,7 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
           onClick={() => setActiveTab("XDC")}
         >
           <span>XDC</span>
-        </button>
+        </button> */}
       </div>
 
       {/* Currency list */}
@@ -208,9 +252,7 @@ const CurrencySelector = ({ onSelect, onCancel, prices }) => {
               className="p-4 bg-dark-light border border-[#425152] rounded-lg mb-2 flex items-center cursor-pointer hover:border-primary transition-colors"
               onClick={() => onSelect(coin.symbol)}
             >
-              <div className="mr-3">
-                <CryptoIcon symbol={coin.symbol} size={32} />
-              </div>
+              <div className="mr-3">{getCurrencyLogo(coin.symbol)}</div>
               <div className="flex-grow">
                 <div className="font-medium text-white">{coin.name}</div>
                 <div className="text-sm text-gray-light">{coin.symbol}</div>

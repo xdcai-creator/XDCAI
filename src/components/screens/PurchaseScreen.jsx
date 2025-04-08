@@ -6,7 +6,9 @@ import { useWallet } from "../../hooks/useWallet";
 import { usePrices } from "../../hooks/usePrices";
 import { useContract } from "../../hooks/useContract";
 import { useNetwork } from "../../context/NetworkContext";
-import CurrencySelector from "../purchase/CurrencySelector";
+import CurrencySelector, {
+  getCurrencyLogo,
+} from "../purchase/CurrencySelector";
 import {
   registerTransactionIntent,
   clearStoredIntentId,
@@ -53,7 +55,7 @@ const PurchaseScreen = () => {
   const { isTestnet } = useNetwork();
 
   // Form state
-  const [selectedCurrency, setSelectedCurrency] = useState("XDC");
+  const [selectedCurrency, setSelectedCurrency] = useState("ETH");
   const [ethAmount, setEthAmount] = useState("");
   const [xdcaiAmount, setXdcaiAmount] = useState("0");
   const [showCurrencySelection, setShowCurrencySelection] = useState(false);
@@ -508,10 +510,13 @@ const PurchaseScreen = () => {
             />
             <button
               onClick={() => setShowCurrencySelection(true)}
-              className="w-32 bg-dark-light border border-[#425152] rounded-lg px-4 flex items-center justify-center text-white cursor-pointer h-14"
+              className="w-32 bg-dark-light border border-[#425152] rounded-lg px-2 flex items-center justify-between text-white cursor-pointer h-14"
             >
-              <span className="font-bold text-lg">{selectedCurrency}</span>
-              <span className="ml-2">▼</span>
+              <span className="mr-3"> {getCurrencyLogo(selectedCurrency)}</span>
+              <span className="font-medium text-md">
+                {selectedCurrency?.split("-")[0]}
+              </span>
+              <span className="ml-1">▼</span>
             </button>
           </div>
         </div>

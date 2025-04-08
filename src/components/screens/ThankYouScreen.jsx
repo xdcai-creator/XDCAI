@@ -162,13 +162,6 @@ const ThankYouScreen = () => {
   const findMatchingContribution = useCallback((contributions, pendingTx) => {
     if (!pendingTx) return null;
 
-    console.log(
-      "Looking for matching contribution with tx hash:",
-      pendingTx.hash
-    );
-    console.log("Sender address:", pendingTx.senderAddress);
-    console.log("Available contributions:", contributions);
-
     // Sort by most recent first
     const sortedContributions = [...contributions].sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
@@ -277,8 +270,6 @@ const ThankYouScreen = () => {
     // Start the polling interval
     const pollInterval = setInterval(async () => {
       try {
-        console.log(`Polling for contributions from address: ${senderAddress}`);
-
         // Fetch all contributions for the SENDER wallet (not current XDC wallet)
         const res = await adminApi.getContributions({
           walletAddress: senderAddress,
