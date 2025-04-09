@@ -1,16 +1,17 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ethers } from "ethers";
 import { useWallet } from "../../hooks/useWallet";
 import { useNetwork } from "../../context/NetworkContext";
 import { useContract } from "../../hooks/useContract";
-import { contributionsApi, adminApi } from "../../services/api";
+import { contributionsApi } from "../../services/api";
 import { CONTRACT_ADDRESSES } from "../../contracts/contractAddresses";
 import XDCAIPresale2_ABI from "../../contracts/abis/XDCAIPresale";
 import { isValidEmail } from "../../utils/validators";
 import { MetamaskIcon, XDCIcon } from "../icons/CryptoIcons";
 import ConnectXdcPopup from "../thank-you/ConnectXdcPopup";
+import ContributionStatus from "../thank-you/ContributionStatus";
 
 /**
  * Thank you screen shown after successful purchase
@@ -30,14 +31,10 @@ const ThankYouScreen = () => {
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
 
-  // Contribution tracking
-  const [pendingTx, setPendingTx] = useState(null);
-  const [isPolling, setIsPolling] = useState(false);
+  // Contribution tracking - keep some of these for backward compatibility
   const [foundContribution, setFoundContribution] = useState(null);
   const [contributionId, setContributionId] = useState(null);
-  const [pollingTimeout, setPollingTimeout] = useState(null);
 
   // Claiming state
   const [isClaimingTokens, setIsClaimingTokens] = useState(false);
@@ -53,6 +50,13 @@ const ThankYouScreen = () => {
     // Check if user has completed the transaction but not yet claimed tokens
     const checkTxStatus = async () => {
       const txDetails = localStorage.getItem("xdcai_tx_details");
+
+      const storedContributionId = localStorage.getItem(
+        "xdcai_contribution_id"
+      );
+      if (storedContributionId) {
+        setContributionId(storedContributionId);
+      }
 
       if (!txDetails) {
         // If there are no transaction details at all, redirect to purchase
@@ -131,23 +135,6 @@ const ThankYouScreen = () => {
       try {
         const details = JSON.parse(txDetails);
         setTransactionDetails(details);
-
-        // Create pending transaction object with necessary fields
-        setPendingTx({
-          hash: details.hash,
-          timestamp: Date.now(),
-          sourceChain: details.currency.includes("BNB")
-            ? "bsc"
-            : details.currency.includes("SOL")
-            ? "solana"
-            : details.currency === "ETH"
-            ? "ethereum"
-            : "xdc",
-          amount: details.amount,
-          currency: details.currency,
-          // Store the original sender address
-          senderAddress: details.senderAddress || address,
-        });
       } catch (err) {
         console.error("Error parsing transaction details:", err);
         navigate("/purchase");
@@ -157,172 +144,6 @@ const ThankYouScreen = () => {
       navigate("/purchase");
     }
   }, [navigate, address]);
-
-  // Function to validate that a contribution matches our transaction
-  const findMatchingContribution = useCallback((contributions, pendingTx) => {
-    if (!pendingTx) return null;
-
-    // Sort by most recent first
-    const sortedContributions = [...contributions].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-    );
-
-    // Find contribution that matches our transaction
-    return sortedContributions.find((contribution) => {
-      // Match by transaction hash if available (most reliable)
-      if (pendingTx.hash && contribution.sourceTxHash === pendingTx.hash) {
-        console.log("Found match by hash:", contribution);
-        return true;
-      }
-
-      // For XDC transactions, check if there are any direct matches
-      if (
-        pendingTx.sourceChain === "xdc" &&
-        contribution.sourceChain === "xdc"
-      ) {
-        const isMatch =
-          contribution.status === "Detected" &&
-          // Check within reasonable time frame
-          new Date(contribution.createdAt) >
-            new Date(pendingTx.timestamp - 30 * 60 * 1000);
-
-        if (isMatch) console.log("Found XDC match:", contribution);
-        return isMatch;
-      }
-
-      // Fallback validation for other chains if hash isn't matching yet
-      const sourceChainMatch =
-        contribution.sourceChain === pendingTx.sourceChain;
-      const statusMatch = contribution.status === "Detected";
-      const timeMatch =
-        new Date(contribution.createdAt) >
-        new Date(pendingTx.timestamp - 30 * 60 * 1000);
-
-      // Verify amount is approximately correct (within 5% for gas fees)
-      const amountDiff = Math.abs(
-        parseFloat(contribution.amount) - parseFloat(pendingTx.amount)
-      );
-      const amountRatio = amountDiff / parseFloat(pendingTx.amount);
-      const amountMatch = amountRatio <= 0.05;
-
-      const isMatch =
-        sourceChainMatch && statusMatch && timeMatch && amountMatch;
-
-      if (isMatch) {
-        console.log("Found fallback match:", contribution);
-        console.log("Chain match:", sourceChainMatch);
-        console.log("Status match:", statusMatch);
-        console.log("Time match:", timeMatch);
-        console.log(
-          "Amount match:",
-          amountMatch,
-          "(diff ratio:",
-          amountRatio,
-          ")"
-        );
-      }
-
-      return isMatch;
-    });
-  }, []);
-
-  // Start polling after email is submitted and we have transaction details
-  useEffect(() => {
-    if (emailSubmitted && pendingTx && !foundContribution && !isPolling) {
-      startPolling();
-    }
-
-    return () => {
-      // Clean up polling on unmount
-      if (pollingTimeout) {
-        clearTimeout(pollingTimeout);
-      }
-    };
-  }, [emailSubmitted, pendingTx, foundContribution, isPolling]);
-
-  // Polling function
-  const startPolling = useCallback(() => {
-    if (!pendingTx) return;
-
-    // Use the original sender address, not the current XDC address
-    const senderAddress = pendingTx.senderAddress || address;
-
-    if (!senderAddress) {
-      console.error("No sender address available");
-      setError(
-        "Could not determine the source wallet address. Please contact support."
-      );
-      return;
-    }
-
-    setIsPolling(true);
-
-    // Set overall timeout (20 minutes)
-    const timeoutId = setTimeout(() => {
-      setIsPolling(false);
-      setError(
-        "We couldn't automatically detect your contribution. Please contact support if you've made a transaction."
-      );
-    }, 20 * 60 * 1000);
-
-    setPollingTimeout(timeoutId);
-
-    // Start the polling interval
-    const pollInterval = setInterval(async () => {
-      try {
-        // Fetch all contributions for the SENDER wallet (not current XDC wallet)
-        const res = await adminApi.getContributions({
-          walletAddress: senderAddress,
-        });
-
-        const { contributions } = res || { contributions: [] };
-
-        if (!contributions || contributions.length === 0) {
-          console.log("No contributions found yet, continuing to poll...");
-          return;
-        }
-
-        console.log(
-          `Found ${contributions.length} contributions for address ${senderAddress}`
-        );
-
-        // Find the matching contribution
-        const matchingContribution = findMatchingContribution(
-          contributions,
-          pendingTx
-        );
-
-        if (matchingContribution) {
-          // Stop polling
-          clearInterval(pollInterval);
-          clearTimeout(timeoutId);
-          setIsPolling(false);
-
-          console.log("Found matching contribution:", matchingContribution);
-
-          // Store the contribution
-          setFoundContribution(matchingContribution);
-          setContributionId(matchingContribution._id);
-
-          // Show the connect XDC popup
-          if (!isXdcConnected) {
-            setShowConnectXdcPopup(true);
-          }
-
-          // Show success message
-          toast.success("Your contribution has been detected!");
-        }
-      } catch (error) {
-        console.error("Error polling for contribution:", error);
-      }
-    }, 10000); // Poll every 10 seconds
-
-    // Clean up function
-    return () => {
-      clearInterval(pollInterval);
-      clearTimeout(timeoutId);
-    };
-  }, [pendingTx, address, findMatchingContribution]);
 
   // Handle successful claim cleanup
   const handleSuccessfulClaim = () => {
@@ -401,6 +222,22 @@ const ThankYouScreen = () => {
     }
   };
 
+  // Update contribution ID when found via websocket
+  const handleContributionFound = (contribution) => {
+    if (contribution && contribution._id) {
+      setFoundContribution(contribution);
+      setContributionId(contribution._id);
+
+      // Store contribution ID in localStorage for persistence
+      localStorage.setItem("xdcai_contribution_id", contribution._id);
+
+      // Show the connect XDC popup if contribution is found and we're not connected to XDC
+      if (!isXdcConnected) {
+        setShowConnectXdcPopup(true);
+      }
+    }
+  };
+
   // Handle claim tokens
   const handleClaimTokens = async () => {
     if (!isXdcConnected || !isConnected || !address) {
@@ -447,7 +284,21 @@ const ThankYouScreen = () => {
 
       // Get the claimable amount first to check if there's anything to claim
       const claimable = await contract.getClaimableAmount(address);
+      const vestingInfo = await contract.getVestingInfo(address);
       setClaimableTokens(ethers.utils.formatEther(claimable));
+
+      console.log("claimable ", claimable.toString());
+      console.log("Vesting info:", {
+        totalAmount: ethers.utils.formatEther(vestingInfo.totalAmount),
+        releasedAmount: ethers.utils.formatEther(vestingInfo.releasedAmount),
+        vestedAmount: vestingInfo.vestedAmount
+          ? ethers.utils.formatEther(vestingInfo.vestedAmount)
+          : "N/A",
+        nextUnlockTime: vestingInfo.nextUnlockTime
+          ? new Date(vestingInfo.nextUnlockTime.toNumber() * 1000).toString()
+          : "N/A",
+        initialReleaseClaimed: vestingInfo.initialReleaseClaimed || "N/A",
+      });
 
       if (claimable.toString() === "0") {
         toast.info("No tokens available to claim at this time.");
@@ -509,7 +360,6 @@ const ThankYouScreen = () => {
           >
             <span>Download Metamask</span>
             <MetamaskIcon />
-            {/* <img src="/metamask-fox.svg" alt="Metamask" className="h-6 w-6" /> */}
           </a>
         </div>
 
@@ -524,7 +374,6 @@ const ThankYouScreen = () => {
           >
             <span>Connect to XDC network!</span>
             <XDCIcon />
-            {/* <img src="/xdc-logo.png" alt="XDC" className="h-6 w-6" /> */}
           </button>
         </div>
 
@@ -632,57 +481,16 @@ const ThankYouScreen = () => {
         Thanks for purchasing XDCAI tokens!
       </div>
 
-      {emailSubmitted && isPolling && (
-        <div className="mb-6 p-4 bg-dark-light border border-[#425152] rounded-lg text-center">
-          <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
-          <h3 className="text-white font-medium mb-2">Please wait</h3>
-          {/* <p className="text-sm text-gray-light">
-            We're looking for your transaction on the blockchain. This may take
-            a few minutes.
-          </p> */}
-          <div className="mt-3 w-full bg-dark-darker rounded-full h-1.5">
-            <div
-              className="bg-primary h-1.5 rounded-full animate-pulse"
-              style={{ width: "60%" }}
-            ></div>
-          </div>
-        </div>
+      {/* Display contribution status from WebSocket */}
+      {transactionDetails && transactionDetails.hash && (
+        <ContributionStatus
+          txHash={transactionDetails.hash}
+          walletAddress={address}
+          senderAddress={transactionDetails.senderAddress}
+          showToasts={true}
+          onContributionFound={handleContributionFound}
+        />
       )}
-
-      {/* {foundContribution && (
-        <div className="mb-6 p-4 bg-dark-light border border-[#425152] rounded-lg">
-          <h3 className="text-primary font-bold mb-3 text-center">
-            Contribution Detected
-          </h3>
-
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-light">Chain:</span>
-              <span className="font-semibold text-white">
-                {foundContribution.sourceChain}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-light">Currency:</span>
-              <span className="font-semibold text-white">
-                {foundContribution.sourceToken}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-light">Amount:</span>
-              <span className="font-semibold text-white">
-                {foundContribution.amount}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-light">USD Value:</span>
-              <span className="font-semibold text-white">
-                ${parseFloat(foundContribution.usdValue).toFixed(2)}
-              </span>
-            </div>
-          </div>
-        </div>
-      )} */}
 
       <p className="text-center text-[#A5C8CA] mb-5">
         In order to claim your tokens, please connect to the XDC network.

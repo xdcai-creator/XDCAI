@@ -114,7 +114,7 @@ const ConnectXdcPopup = ({
     } catch (error) {
       console.error("Error confirming XDC address:", error);
       toast.error("Failed to confirm XDC address. Please try again.");
-      setCurrentStep("confirm");
+      //   setCurrentStep("confirm");
     } finally {
       setIsProcessing(false);
     }
@@ -179,6 +179,7 @@ const ConnectXdcPopup = ({
     );
   }
 
+  // DO NOT SHOW
   if (currentStep === "confirm") {
     return (
       <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-70">

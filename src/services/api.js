@@ -113,6 +113,15 @@ export const adminApi = {
     return response.data;
   },
 
+  registerContribution: async (contributionId) => {
+    const response = await apiClient.post(
+      "/api/transactions/contribution/register-contract",
+      { contributionId },
+      { headers: authHeader() }
+    );
+    return response.data;
+  },
+
   // Get all contributions with flexible filtering options
   getContributions: async (options = {}) => {
     // Build query parameters

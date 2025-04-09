@@ -1,119 +1,10 @@
 // src/components/admin/ContributionsDashboard.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ethers } from "ethers";
 import { adminApi, authService } from "../../services/api";
 import { formatTokenAmount } from "../../utils/tokenUtils";
 import { formatAddress } from "../../utils/chainUtils";
-
-// Table component for contributions list
-const ContributionsTable = ({
-  contributions,
-  onViewDetails,
-  onActionClick,
-}) => {
-  return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full bg-dark-lighter border border-dark-lighter shadow-md rounded-md">
-        <thead className="bg-[#425152]">
-          <tr>
-            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
-              ID
-            </th>
-            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
-              Source
-            </th>
-            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
-              Amount
-            </th>
-            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
-              Status
-            </th>
-            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
-              XDC Address
-            </th>
-            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
-              Created
-            </th>
-            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
-              Last Updated
-            </th>
-            <th className="py-2 px-4 border-b border-[#425152] text-left text-gray-light">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {contributions.length === 0 ? (
-            <tr>
-              <td colSpan="8" className="py-4 px-4 text-center text-gray-light">
-                No contributions found
-              </td>
-            </tr>
-          ) : (
-            contributions.map((contribution) => (
-              <tr key={contribution._id} className="hover:bg-dark-lighter">
-                <td
-                  className="py-2 px-4 border-b border-[#425152] cursor-pointer text-primary hover:text-primary-light"
-                  onClick={() => onViewDetails(contribution)}
-                >
-                  {contribution._id.substring(0, 8)}...
-                </td>
-                <td className="py-2 px-4 border-b border-[#425152]">
-                  <div className="text-white">{contribution.sourceChain}</div>
-                  <div className="text-xs text-gray-light">
-                    {contribution.sourceToken}
-                  </div>
-                </td>
-                <td className="py-2 px-4 border-b border-[#425152]">
-                  <div className="text-white">
-                    {formatAmount(
-                      contribution.amount,
-                      contribution.sourceToken
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-light">
-                    ${contribution.usdValue}
-                  </div>
-                </td>
-                <td className="py-2 px-4 border-b border-[#425152]">
-                  <StatusBadge status={contribution.status} />
-                </td>
-                <td className="py-2 px-4 border-b border-[#425152] text-xs text-white">
-                  {formatAddress(contribution.xdcClaimAddress)}
-                </td>
-                <td className="py-2 px-4 border-b border-[#425152] text-xs text-white">
-                  {new Date(contribution.createdAt).toLocaleString()}
-                </td>
-                <td className="py-2 px-4 border-b border-[#425152] text-xs text-white">
-                  {new Date(contribution.updatedAt).toLocaleString()}
-                </td>
-                <td className="py-2 px-4 border-b border-[#425152]">
-                  <div className="flex space-x-2">
-                    <button
-                      className="bg-primary hover:bg-primary-light text-dark px-2 py-1 rounded text-xs"
-                      onClick={() => onActionClick(contribution, "advance")}
-                    >
-                      Advance
-                    </button>
-                    {isRetryable(contribution.status) && (
-                      <button
-                        className="bg-accent-blue hover:bg-accent-blue/80 text-white px-2 py-1 rounded text-xs"
-                        onClick={() => onActionClick(contribution, "retry")}
-                      >
-                        Retry
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-};
 
 // Helper function to format amounts
 const formatAmount = (amount, token) => {
@@ -168,6 +59,14 @@ const StatusBadge = ({ status }) => {
       bgColor = "bg-[#9945FF]/20";
       textColor = "text-[#9945FF]";
       break;
+    case "Bridge Needs Verification": // Add this case
+      bgColor = "bg-[#F3BA2F]/40";
+      textColor = "text-[#F3BA2F]";
+      break;
+    case "Registration Pending":
+      bgColor = "bg-[#FF9800]/30";
+      textColor = "text-[#FF9800]";
+      break;
     case "Swap Failed":
     case "Bridge Failed":
     case "Failed":
@@ -208,6 +107,7 @@ const ContributionsDashboard = () => {
   const [isOwner, setIsOwner] = useState(false);
   const [sortField, setSortField] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
+  const [isRegistering, setIsRegistering] = useState(false);
   const [pagination, setPagination] = useState({
     total: 0,
     limit: 20,
@@ -223,6 +123,8 @@ const ContributionsDashboard = () => {
     { value: "Swap Failed", label: "Swap Failed" },
     { value: "Pending Bridge", label: "Pending Bridge" },
     { value: "Bridging", label: "Bridging" },
+    { value: "Bridge Needs Verification", label: "Bridge Needs Verification" },
+    { value: "Registration Pending", label: "Registration Pending" }, // Add new status
     { value: "Bridged", label: "Bridged" },
     { value: "Bridge Failed", label: "Bridge Failed" },
     { value: "Claimable", label: "Claimable" },
@@ -246,6 +148,10 @@ const ContributionsDashboard = () => {
     { value: "usdValue", label: "USD Value" },
     { value: "status", label: "Status" },
   ];
+
+  const pendingRegistrations = useMemo(() => {
+    return contributions.filter((c) => c.status === "Registration Pending");
+  }, [contributions]);
 
   // Check authentication on component mount
   useEffect(() => {
@@ -454,20 +360,34 @@ const ContributionsDashboard = () => {
   };
 
   // Format token amount
-  const formatAmount = (amount, token) => {
+  const formatAmount = (amount, token, sourceChain) => {
     try {
-      // Different tokens have different decimal places
+      // Different tokens have different decimal places based on chain
       const decimals = {
+        // Base tokens
         ETH: 18,
         BNB: 18,
         XDC: 18,
         SOL: 9,
+        XDCAI: 18,
+
+        // USDT/USDC by chain
+        "USDT-ethereum": 6,
+        "USDT-bsc": 18,
+        "USDT-solana": 6,
+        "USDC-ethereum": 6,
+        "USDC-bsc": 18,
+        "USDC-solana": 6,
+
+        // Defaults
         USDT: 6,
         USDC: 6,
-        XDCAI: 18,
       };
 
-      const tokenDecimals = decimals[token] || 18;
+      // Try to get chain-specific decimals first
+      const tokenKey = sourceChain ? `${token}-${sourceChain}` : token;
+      const tokenDecimals = decimals[tokenKey] || decimals[token] || 18;
+
       return `${parseFloat(
         ethers.utils.formatUnits(amount, tokenDecimals)
       ).toFixed(4)} ${token}`;
@@ -482,6 +402,66 @@ const ContributionsDashboard = () => {
     return ["Swap Failed", "Bridge Failed", "Failed"].includes(status);
   };
 
+  const handleRegisterContract = async (contributionId) => {
+    try {
+      setIsRegistering(true);
+
+      // Show confirmation dialog first
+      if (
+        !confirm(
+          "Are you sure you want to manually register this contribution with the contract?"
+        )
+      ) {
+        setIsRegistering(false);
+        return;
+      }
+
+      const response = await adminApi.registerContribution(contributionId);
+
+      if (response.success) {
+        // Update contribution in list
+        setContributions((prevContributions) =>
+          prevContributions.map((c) =>
+            c._id === contributionId
+              ? {
+                  ...c,
+                  status: "Claimable",
+                  contractRegistered: true,
+                  contractTxHash: response.txHash,
+                  updatedAt: new Date().toISOString(),
+                }
+              : c
+          )
+        );
+
+        // Update selected contribution if in modal
+        if (
+          selectedContribution &&
+          selectedContribution._id === contributionId
+        ) {
+          setSelectedContribution((prev) => ({
+            ...prev,
+            status: "Claimable",
+            contractRegistered: true,
+            contractTxHash: response.txHash,
+            updatedAt: new Date().toISOString(),
+          }));
+        }
+
+        alert(
+          `Contribution successfully registered with contract. TX: ${response.txHash}`
+        );
+      } else {
+        throw new Error(response.error || "Registration failed");
+      }
+    } catch (err) {
+      console.error("Error registering contribution with contract:", err);
+      alert(`Error: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
   // Check if a status can be bridged
   const isBridgeable = (status, chain) => {
     return status === "Swapped" && chain !== "xdc";
@@ -494,7 +474,18 @@ const ContributionsDashboard = () => {
       "Pending Swap": ["Swapped", "Swap Failed", "Pending Bridge"],
       Swapped: ["Pending Bridge"],
       "Pending Bridge": ["Bridging", "Bridge Failed", "Claimable"],
-      Bridging: ["Bridged", "Bridge Failed", "Claimable"],
+      Bridging: [
+        "Bridged",
+        "Bridge Failed",
+        "Claimable",
+        "Bridge Needs Verification",
+      ],
+      "Bridge Needs Verification": [
+        "Bridged",
+        "Bridging",
+        "Bridge Failed",
+        "Claimable",
+      ],
       Bridged: ["Claimable"],
       Claimable: ["Claimed"],
       "Swap Failed": ["Pending Swap", "Failed"],
@@ -726,7 +717,8 @@ const ContributionsDashboard = () => {
                           <div className="text-white">
                             {formatAmount(
                               contribution.amount,
-                              contribution.sourceToken
+                              contribution.sourceToken,
+                              contribution.sourceChain
                             )}
                           </div>
                           <div className="text-xs text-gray-400">
@@ -758,6 +750,19 @@ const ContributionsDashboard = () => {
                             >
                               Advance
                             </button>
+                            {contribution.status === "Registration Pending" && (
+                              <button
+                                className="bg-[#FF9800] hover:bg-[#FFA726] text-black px-2 py-1 rounded text-xs"
+                                onClick={() =>
+                                  handleRegisterContract(contribution._id)
+                                }
+                                disabled={isRegistering}
+                              >
+                                {isRegistering
+                                  ? "Registering..."
+                                  : "Register Contract"}
+                              </button>
+                            )}
                             {isRetryable(contribution.status) && (
                               <button
                                 className="bg-[#1da1f2] hover:bg-[#1da1f2]/80 text-white px-2 py-1 rounded text-xs"
@@ -872,7 +877,8 @@ const ContributionsDashboard = () => {
                   <p className="text-sm text-white">
                     {formatAmount(
                       selectedContribution.amount,
-                      selectedContribution.sourceToken
+                      selectedContribution.sourceToken,
+                      selectedContribution.sourceChain
                     )}
                   </p>
                 </div>
@@ -973,6 +979,38 @@ const ContributionsDashboard = () => {
                 </div>
               </div>
 
+              {selectedContribution.status === "Registration Pending" && (
+                <div className="mt-4 p-4 bg-[#FF9800]/10 border border-[#FF9800] rounded-lg">
+                  <h3 className="font-medium text-[#FF9800] mb-2">
+                    Registration Required
+                  </h3>
+                  <p className="text-sm text-gray-300 mb-3">
+                    This contribution has been bridged successfully but failed
+                    during contract registration. Manual registration is
+                    required.
+                  </p>
+
+                  {selectedContribution.registrationRetryCount > 0 && (
+                    <div className="text-sm text-gray-400 mb-3">
+                      System retry count:{" "}
+                      {selectedContribution.registrationRetryCount}/3
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() =>
+                      handleRegisterContract(selectedContribution._id)
+                    }
+                    className="w-full py-2 bg-[#FF9800] hover:bg-[#FFA726] text-black rounded font-medium"
+                    disabled={isRegistering}
+                  >
+                    {isRegistering
+                      ? "Registering..."
+                      : "Register with Contract"}
+                  </button>
+                </div>
+              )}
+
               <div className="flex justify-between pt-4 border-t border-[#303030]">
                 <div>
                   <h3 className="font-medium text-gray-300 mb-2">
@@ -1069,8 +1107,22 @@ const ContributionDetailModal = ({ contribution, onClose, onAction }) => {
       "Pending Swap": ["Swapped", "Swap Failed", "Pending Bridge"],
       Swapped: ["Pending Bridge"],
       "Pending Bridge": ["Bridging", "Bridge Failed", "Claimable"],
-      Bridging: ["Bridged", "Bridge Failed", "Claimable"],
-      Bridged: ["Claimable"],
+      Bridging: [
+        "Bridged",
+        "Bridge Failed",
+        "Claimable",
+        "Registration Pending", // Add new status option
+        "Bridge Needs Verification",
+      ],
+      "Bridge Needs Verification": [
+        "Bridged",
+        "Bridging",
+        "Bridge Failed",
+        "Registration Pending", // Add new status option
+        "Claimable",
+      ],
+      "Registration Pending": ["Claimable"],
+      Bridged: ["Claimable", "Registration Pending"], // Add Registration Pending as an option
       Claimable: ["Claimed"],
       "Swap Failed": ["Pending Swap", "Failed"],
       "Bridge Failed": ["Pending Bridge", "Failed"],

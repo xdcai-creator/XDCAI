@@ -311,6 +311,7 @@ const PurchaseScreen = () => {
             const txDetails = {
               amount: ethAmount,
               currency: selectedCurrency,
+              tokenType: selectedCurrency,
               tokenDecimals: 18,
               tokens: xdcaiAmount,
               tokensReceived: xdcaiAmount,
