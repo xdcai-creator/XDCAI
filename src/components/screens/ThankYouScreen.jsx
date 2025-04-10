@@ -106,8 +106,17 @@ const ThankYouScreen = () => {
 
         if (response) {
           if (response.email) {
-            setUserEmail(response.email);
-            setEmailSubmitted(true);
+            try {
+              await storeEmailApi(response.email, false);
+              setUserEmail(response.email);
+              setEmailSubmitted(true);
+            } catch (storeError) {
+              console.error(
+                "Error storing existing email details:",
+                storeError
+              );
+              setEmailSubmitted(false);
+            }
           } else {
             setEmailSubmitted(false);
           }
@@ -150,6 +159,7 @@ const ThankYouScreen = () => {
     // Only clear these after successful claim
     localStorage.removeItem("xdcai_tx_details");
     localStorage.removeItem("xdcai_seen_thank_you");
+    localStorage.removeItem("xdcai_contribution_id");
 
     setTimeout(() => {
       navigate("/purchase");
@@ -199,12 +209,16 @@ const ThankYouScreen = () => {
         throw new Error("Wallet not connected");
       }
 
-      // Submit email and transaction data to backend API
-      await contributionsApi.storeUserEmail(
-        _emailInput,
-        address,
-        transactionDetails || {}
+      const txDetails = localStorage.getItem("xdcai_tx_details");
+      console.log(
+        "transactionDetails in thank you store email",
+        transactionDetails
       );
+      const details = JSON.parse(txDetails);
+      console.log("txDetailsl", details);
+
+      // Submit email and transaction data to backend API
+      await contributionsApi.storeUserEmail(_emailInput, address, details);
 
       if (showEmailToast) {
         toast.success("Email submitted successfully!");

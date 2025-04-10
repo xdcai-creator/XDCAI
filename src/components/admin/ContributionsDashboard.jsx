@@ -1,6 +1,7 @@
 // src/components/admin/ContributionsDashboard.jsx
 import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
 import { ethers } from "ethers";
 import { adminApi, authService } from "../../services/api";
 import { formatTokenAmount } from "../../utils/tokenUtils";
@@ -108,9 +109,11 @@ const ContributionsDashboard = () => {
   const [sortField, setSortField] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
   const [isRegistering, setIsRegistering] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [pagination, setPagination] = useState({
     total: 0,
-    limit: 20,
+    limit: 10,
     skip: 0,
   });
 
@@ -197,6 +200,8 @@ const ContributionsDashboard = () => {
         status: statusFilter !== "all" ? statusFilter : undefined,
         chain: chainFilter !== "all" ? chainFilter : undefined,
         search: searchQuery || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
       };
 
       const response = await adminApi.getContributions(filterOptions);
@@ -546,8 +551,8 @@ const ContributionsDashboard = () => {
         </div>
 
         {/* Filters and search */}
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
+        <div className="mb-6 flex flex-wrap gap-x-4">
+          <div className="w-[25%]">
             <label className="block text-sm font-medium text-gray-300 mb-1">
               Status Filter
             </label>
@@ -567,7 +572,7 @@ const ContributionsDashboard = () => {
             </select>
           </div>
 
-          <div>
+          <div className="w-[23%]">
             <label className="block text-sm font-medium text-gray-300 mb-1">
               Chain Filter
             </label>
@@ -587,7 +592,7 @@ const ContributionsDashboard = () => {
             </select>
           </div>
 
-          <div>
+          <div className="w-[23%]">
             <label className="block text-sm font-medium text-gray-300 mb-1">
               Sort By
             </label>
@@ -617,6 +622,31 @@ const ContributionsDashboard = () => {
               </button>
             </div>
           </div>
+          {/* Date Range Filter */}
+          <div className=" grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Start Date
+              </label>
+              <input
+                type="date"
+                className="w-full p-2 border border-[#303030] bg-[#1A1A1A] rounded text-white"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                End Date
+              </label>
+              <input
+                type="date"
+                className="w-full p-2 border border-[#303030] bg-[#1A1A1A] rounded text-white"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+              />
+            </div>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -637,6 +667,32 @@ const ContributionsDashboard = () => {
                 Search
               </button>
             </form>
+          </div>
+          {/* Advanced Filter Toggle and Filter Actions */}
+          <div className="flex justify-between items-center mt-5 gap-x-5">
+            <button
+              onClick={() => {
+                // Reset all filters to default
+                setStatusFilter("all");
+                setChainFilter("all");
+                setSearchQuery("");
+                setStartDate("");
+                setEndDate("");
+                setPagination({ ...pagination, skip: 0 });
+                // Then fetch with reset filters
+                fetchContributions();
+              }}
+              className="px-3 py-2 bg-[#303030] hover:bg-[#404040] text-white rounded-md text-sm"
+            >
+              Reset Filters
+            </button>
+
+            <button
+              onClick={fetchContributions}
+              className="px-3 py-2 bg-primary hover:bg-primary-light text-black rounded-md text-sm"
+            >
+              Apply Filters
+            </button>
           </div>
         </div>
 

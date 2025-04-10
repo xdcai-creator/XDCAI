@@ -105,10 +105,27 @@ export const priceApi = {
 
 // Admin API
 export const adminApi = {
-  // Admin login
-  login: async (password) => {
-    const response = await apiClient.post("/api/auth/admin/login", {
-      password,
+  // Check admin status to determine if initial setup is required
+  checkAdminStatus: async () => {
+    const response = await apiClient.get("/api/auth/admin/status");
+    return response.data;
+  },
+
+  // Admin login with support for initial setup
+  login: async (password, newPassword = null) => {
+    // Prepare request body based on whether it's initial setup or regular login
+    const requestBody = newPassword
+      ? { password, new_password: newPassword }
+      : { password };
+
+    const response = await apiClient.post("/api/auth/admin/login", requestBody);
+    return response.data;
+  },
+
+  // Verify the admin token
+  verifyToken: async () => {
+    const response = await apiClient.get("/api/auth/admin/verify", {
+      headers: authHeader(),
     });
     return response.data;
   },
@@ -248,12 +265,13 @@ export const contractApi = {
 
 // Authentication helper functions
 export const authService = {
+  // Check if admin is authenticated
   isAuthenticated: () => {
     const token = localStorage.getItem("adminToken");
     if (!token) return false;
 
     try {
-      // Simple check - in a real app, verify expiration
+      // Decode token and check expiration
       const payload = JSON.parse(atob(token.split(".")[1]));
       return payload.exp > Date.now() / 1000;
     } catch (e) {
@@ -261,12 +279,46 @@ export const authService = {
     }
   },
 
-  login: async (password) => {
-    const { token } = await adminApi.login(password);
-    localStorage.setItem("adminToken", token);
-    return token;
+  // Check if admin setup is required
+  checkSetupRequired: async () => {
+    try {
+      const { adminExists, setupRequired } = await adminApi.checkAdminStatus();
+      return { adminExists, setupRequired };
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      return { adminExists: false, setupRequired: true };
+    }
   },
 
+  // Login with support for initial setup
+  login: async (password, newPassword = null) => {
+    const response = await adminApi.login(password, newPassword);
+
+    // Store the token if login was successful
+    if (response.token) {
+      localStorage.setItem("adminToken", response.token);
+      return response.token;
+    }
+
+    // If initial setup is required but new password wasn't provided
+    if (response.needsNewPassword) {
+      throw new Error("New password required for initial admin setup");
+    }
+
+    throw new Error(response.error || "Login failed");
+  },
+
+  // Verify the admin token
+  verifyToken: async () => {
+    try {
+      const response = await adminApi.verifyToken();
+      return response.valid;
+    } catch (error) {
+      return false;
+    }
+  },
+
+  // Logout
   logout: () => {
     localStorage.removeItem("adminToken");
   },

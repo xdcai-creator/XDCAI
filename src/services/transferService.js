@@ -23,18 +23,18 @@ import {
 } from "@solana/spl-token";
 import { toast } from "react-toastify";
 
-const SOLANA_RPC_ENDPOINTS = {
-  mainnet: [
-    "https://api.mainnet-beta.solana.com",
-    "https://solana-api.projectserum.com",
-    "https://rpc.ankr.com/solana",
-  ],
-  devnet: [
-    "https://api.devnet.solana.com",
-    "https://devnet.genesysgo.net",
-    "https://rpc.ankr.com/solana_devnet",
-  ],
-};
+// const SOLANA_RPC_ENDPOINTS = {
+//   mainnet: [
+//     "https://api.mainnet-beta.solana.com",
+//     "https://solana-api.projectserum.com",
+//     "https://rpc.ankr.com/solana",
+//   ],
+//   devnet: [
+//     "https://api.devnet.solana.com",
+//     "https://devnet.genesysgo.net",
+//     "https://rpc.ankr.com/solana_devnet",
+//   ],
+// };
 
 // Simple ERC-20 ABI for token transfers
 const ERC20_ABI = [
@@ -64,19 +64,59 @@ const SPL_TOKEN_MINTS = {
   "USDC-SOL": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", // USDC mainnet
 };
 
-// 2. Create a function to get a working Solana connection with fallbacks
+const SOLANA_RPC_ENDPOINTS = {
+  mainnet: [
+    "https://solana-mainnet.core.chainstack.com/01f2aa77b7f26968197ed2a2f700fd89",
+    "https://api.mainnet-beta.solana.com",
+    "https://solana-api.projectserum.com",
+    "https://rpc.ankr.com/solana",
+    "https://solana.public-rpc.com",
+    "https://solana.getblock.io/mainnet/",
+    "https://free.rpcpool.com",
+    "https://mainnet.rpcpool.com",
+    "https://mainnet-beta.solflare.network",
+  ],
+  devnet: [
+    "https://api.devnet.solana.com",
+    "https://devnet.genesysgo.net",
+    "https://rpc.ankr.com/solana_devnet",
+    "https://dev.rpcpool.com",
+  ],
+};
+
+/**
+ * Get a reliable Solana connection with improved fallback logic
+ * @param {boolean} isTestnet - Whether to use testnet or mainnet
+ * @returns {Promise<Connection>} - A working Solana connection
+ */
 export const getSolanaConnection = async (isTestnet = false) => {
   const endpoints = isTestnet
     ? SOLANA_RPC_ENDPOINTS.devnet
     : SOLANA_RPC_ENDPOINTS.mainnet;
 
-  // Try each endpoint until one works
+  const errors = [];
+
+  // Try each endpoint with a short timeout
   for (const endpoint of endpoints) {
     try {
+      console.log(
+        `Attempting to connect to Solana ${
+          isTestnet ? "devnet" : "mainnet"
+        } using ${endpoint}`
+      );
       const connection = new Connection(endpoint, "confirmed");
 
-      // Test the connection by making a simple request
-      await connection.getVersion();
+      // Test the connection with a short timeout
+      await Promise.race([
+        connection.getLatestBlockhash().then(() => true),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`Connection timeout for ${endpoint}`)),
+            3000
+          )
+        ),
+      ]);
+
       console.log(
         `Connected to Solana ${
           isTestnet ? "devnet" : "mainnet"
@@ -84,17 +124,52 @@ export const getSolanaConnection = async (isTestnet = false) => {
       );
       return connection;
     } catch (error) {
-      console.warn(
-        `Failed to connect to Solana endpoint ${endpoint}:`,
-        error.message
-      );
-      // Continue to the next endpoint if this one fails
+      const errorMsg = `Failed to connect to ${endpoint}: ${error.message}`;
+      console.warn(errorMsg);
+      errors.push(errorMsg);
+      // Continue to the next endpoint
     }
   }
 
-  throw new Error("Unable to connect to any Solana RPC endpoint");
-};
+  // If we're here, we couldn't connect to any endpoint
+  // Try one more approach - use a dynamic fallback from a list of free RPCs
+  try {
+    // Default to devnet as a last resort for testing
+    const fallbackUrl = isTestnet
+      ? "https://api.devnet.solana.com"
+      : "https://api.mainnet-beta.solana.com";
 
+    console.log(
+      `Trying final fallback connection to ${fallbackUrl} with higher timeout`
+    );
+    const connection = new Connection(fallbackUrl, {
+      commitment: "confirmed",
+      disableRetryOnRateLimit: false,
+      httpHeaders: { "Content-Type": "application/json" },
+    });
+
+    // Test with longer timeout
+    await Promise.race([
+      connection.getVersion(),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Final fallback connection timeout")),
+          8000
+        )
+      ),
+    ]);
+
+    console.log(`Connected to Solana using fallback endpoint ${fallbackUrl}`);
+    return connection;
+  } catch (finalError) {
+    console.error("All Solana connection attempts failed:", finalError);
+    throw new Error(
+      `Unable to connect to any Solana RPC endpoint. Please try again later. Error details: ${errors.join(
+        "; "
+      )}`
+    );
+  }
+};
 /**
  * Get the appropriate owner address based on chain and token
  * @param {string} chain - The blockchain (ethereum, bsc, solana, xdc)
@@ -560,68 +635,89 @@ export const transferERC20Token = async ({
  * @param {Object} params.wallet - Solana wallet
  * @returns {Promise<Object>} - Transaction result
  */
+// Modify the transferSOL function to handle connection issues better
 export const transferSOL = async ({ amount, connection, wallet }) => {
   try {
-    if (!wallet.publicKey) {
-      throw new Error("Wallet not connected");
+    if (!wallet) {
+      throw new Error("No Solana wallet provided");
     }
 
-    // If connection is not working, get a new one
-    let reliableConnection = connection;
-    try {
-      await connection.getVersion();
-    } catch (error) {
-      console.warn(
-        "Provided Solana connection failed, creating a new one:",
-        error.message
+    if (!wallet.publicKey) {
+      throw new Error(
+        "Solana wallet not connected. Please connect your wallet."
       );
-      const isTestnet = import.meta.env.VITE_USE_TESTNET === "true";
+    }
+
+    // Get a reliable connection - always try to get a fresh one
+    // since the provided one might be stale or from a failed endpoint
+    const isTestnet = import.meta.env.VITE_USE_TESTNET === "true";
+    console.log("Getting fresh Solana connection");
+    let reliableConnection;
+
+    try {
       reliableConnection = await getSolanaConnection(isTestnet);
+    } catch (connError) {
+      // If even getSolanaConnection fails, provide a clear error
+      throw new Error(
+        `Could not establish a reliable connection to Solana network. Please try again later. ${connError.message}`
+      );
     }
 
     const toAddress = new PublicKey(VITE_OWNER_SOLANA_ADDRESS);
     const fromAddress = wallet.publicKey;
 
-    // Use a higher commitment level for more reliable transactions
-    const blockhashInfo = await reliableConnection.getLatestBlockhash(
-      "finalized"
+    console.log(
+      `Preparing SOL transfer from ${fromAddress.toString()} to ${toAddress.toString()}`
     );
 
-    // Create a transfer instruction
+    // Get blockhash with retry
+    let blockhashInfo;
+    try {
+      blockhashInfo = await reliableConnection.getLatestBlockhash("finalized");
+    } catch (bhError) {
+      console.error("Error getting blockhash:", bhError);
+      throw new Error(
+        `Network connection issue: ${bhError.message}. Please try again.`
+      );
+    }
+
+    // Validate amount and convert to lamports
+    const lamports = Math.round(amount * LAMPORTS_PER_SOL);
+    if (isNaN(lamports) || lamports <= 0) {
+      throw new Error(`Invalid SOL amount: ${amount}`);
+    }
+
+    // Create transaction
     const transaction = new Transaction().add(
       SystemProgram.transfer({
         fromPubkey: fromAddress,
         toPubkey: toAddress,
-        lamports: amount * LAMPORTS_PER_SOL,
+        lamports: lamports,
       })
     );
 
-    // Set the blockhash and recent blockhash fields
+    // Set transaction properties
     transaction.recentBlockhash = blockhashInfo.blockhash;
     transaction.lastValidBlockHeight = blockhashInfo.lastValidBlockHeight;
     transaction.feePayer = fromAddress;
 
-    // Sign and send the transaction with proper error handling
+    console.log(`Sending ${amount} SOL to ${toAddress.toString()}`);
+
+    // Sign and send transaction
     try {
       const signature = await wallet.sendTransaction(
         transaction,
         reliableConnection
       );
 
-      // Wait for confirmation with a reasonable timeout
-      const confirmation = await Promise.race([
-        reliableConnection.confirmTransaction({
-          signature,
-          blockhash: blockhashInfo.blockhash,
-          lastValidBlockHeight: blockhashInfo.lastValidBlockHeight,
-        }),
-        new Promise((_, reject) =>
-          setTimeout(
-            () => reject(new Error("Transaction confirmation timeout")),
-            60000
-          )
-        ),
-      ]);
+      console.log(`Transaction sent with signature: ${signature}`);
+
+      // Confirm transaction
+      await reliableConnection.confirmTransaction({
+        signature,
+        blockhash: blockhashInfo.blockhash,
+        lastValidBlockHeight: blockhashInfo.lastValidBlockHeight,
+      });
 
       console.log(`SOL transfer completed with signature: ${signature}`);
 
@@ -635,22 +731,12 @@ export const transferSOL = async ({ amount, connection, wallet }) => {
         token: "SOL",
       };
     } catch (signError) {
-      // Provide more helpful error messages based on error type
-      if (
-        signError.message.includes("403") ||
-        signError.message.includes("forbidden")
-      ) {
-        throw new Error(
-          "Connection to Solana network denied. Please try again later or use a different wallet."
-        );
-      } else if (signError.message.includes("timeout")) {
-        throw new Error(
-          "Transaction timed out. The network may be congested - please try again later."
-        );
-      } else if (signError.message.includes("User rejected")) {
-        throw new Error("Transaction was rejected in your wallet.");
+      // Handle wallet-specific errors
+      if (signError.message?.includes("User rejected")) {
+        throw new Error("Transaction was rejected in your wallet");
       } else {
-        throw signError;
+        console.error("Solana transaction error:", signError);
+        throw new Error(`Transaction failed: ${signError.message}`);
       }
     }
   } catch (error) {
@@ -668,6 +754,11 @@ export const transferSOL = async ({ amount, connection, wallet }) => {
  * @param {Object} params.wallet - Solana wallet
  * @returns {Promise<Object>} - Transaction result
  */
+/**
+ * Transfer SPL tokens with improved error handling and connection reliability
+ * @param {Object} params - Transfer parameters
+ * @returns {Promise<Object>} - Transaction result
+ */
 export const transferSPLToken = async ({
   token,
   amount,
@@ -675,8 +766,8 @@ export const transferSPLToken = async ({
   wallet,
 }) => {
   try {
-    if (!wallet.publicKey) {
-      throw new Error("Wallet not connected");
+    if (!wallet || !wallet.publicKey) {
+      throw new Error("Solana wallet not connected");
     }
 
     // Get the mint address for the token
@@ -685,71 +776,166 @@ export const transferSPLToken = async ({
       throw new Error(`Mint address not found for ${token}`);
     }
 
+    // Always get a fresh reliable connection
+    const isTestnet = import.meta.env.VITE_USE_TESTNET === "true";
+    console.log("Getting fresh Solana connection for SPL token transfer");
+    let reliableConnection;
+
+    try {
+      reliableConnection = await getSolanaConnection(isTestnet);
+    } catch (connError) {
+      throw new Error(
+        `Could not connect to Solana network for SPL token transfer: ${connError.message}`
+      );
+    }
+
     const mintPublicKey = new PublicKey(mintAddress);
     const toAddress = new PublicKey(VITE_OWNER_SOLANA_ADDRESS);
     const fromAddress = wallet.publicKey;
 
-    // Get the associated token accounts
-    const fromTokenAccount = await getAssociatedTokenAddress(
-      mintPublicKey,
-      fromAddress
-    );
+    console.log(`Processing ${token} transfer from ${fromAddress.toString()}`);
 
-    const toTokenAccount = await getAssociatedTokenAddress(
-      mintPublicKey,
-      toAddress
-    );
+    // Get token accounts with error handling
+    let fromTokenAccount, toTokenAccount;
+    try {
+      fromTokenAccount = await getAssociatedTokenAddress(
+        mintPublicKey,
+        fromAddress
+      );
 
-    // Check if destination token account exists, if not create it
-    const toAccountInfo = await connection.getAccountInfo(toTokenAccount);
+      toTokenAccount = await getAssociatedTokenAddress(
+        mintPublicKey,
+        toAddress
+      );
+    } catch (tokenError) {
+      console.error("Error getting token accounts:", tokenError);
+      throw new Error(
+        `Failed to process ${token} accounts: ${tokenError.message}`
+      );
+    }
+
+    // Check if sender has the token account and sufficient balance
+    try {
+      const accountInfo = await reliableConnection.getAccountInfo(
+        fromTokenAccount
+      );
+
+      if (!accountInfo) {
+        throw new Error(
+          `You don't have a ${token} token account. Please create one first by receiving some ${token}.`
+        );
+      }
+    } catch (balanceError) {
+      console.error("Error checking token account:", balanceError);
+      throw new Error(
+        `Could not verify your ${token} balance: ${balanceError.message}`
+      );
+    }
+
+    // Get blockhash with retry
+    let blockhashInfo;
+    try {
+      blockhashInfo = await reliableConnection.getLatestBlockhash("finalized");
+    } catch (bhError) {
+      console.error("Error getting blockhash for SPL transfer:", bhError);
+      throw new Error(
+        `Network issue while preparing transaction: ${bhError.message}`
+      );
+    }
+
+    // Create transaction
     let transaction = new Transaction();
+    transaction.recentBlockhash = blockhashInfo.blockhash;
+    transaction.feePayer = fromAddress;
+
+    // Check if destination token account exists, create if needed
+    let toAccountInfo;
+    try {
+      toAccountInfo = await reliableConnection.getAccountInfo(toTokenAccount);
+    } catch (accError) {
+      console.warn(
+        "Error checking destination account, assuming it doesn't exist:",
+        accError
+      );
+      toAccountInfo = null;
+    }
 
     if (!toAccountInfo) {
-      // Create the recipient's token account if it doesn't exist
+      console.log(`Creating destination token account for ${token}`);
+      // Create destination token account
       transaction.add(
         createAssociatedTokenAccountInstruction(
-          fromAddress, // payer
-          toTokenAccount, // associatedToken
-          toAddress, // owner
-          mintPublicKey // mint
+          fromAddress,
+          toTokenAccount,
+          toAddress,
+          mintPublicKey
         )
       );
     }
 
-    // Add the transfer instruction
-    // Convert amount to tokens with correct decimals (typically 6 for USDT/USDC)
-    const decimals = 6; // USDT and USDC both use 6 decimals on Solana
-    const tokenAmount = amount * Math.pow(10, decimals);
+    // Calculate token amount with correct decimals
+    const decimals = token.includes("USDT") || token.includes("USDC") ? 6 : 9;
+    const tokenAmount = Math.round(amount * Math.pow(10, decimals));
 
+    // Add transfer instruction
     transaction.add(
       createTransferInstruction(
-        fromTokenAccount, // source
-        toTokenAccount, // destination
-        fromAddress, // owner
-        tokenAmount // amount
+        fromTokenAccount,
+        toTokenAccount,
+        fromAddress,
+        tokenAmount
       )
     );
 
-    // Sign and send the transaction
-    const signature = await wallet.sendTransaction(transaction, connection);
+    console.log(`Sending ${amount} ${token} to ${toAddress.toString()}`);
 
-    // Wait for confirmation
-    await connection.confirmTransaction(signature);
+    // Sign and send transaction
+    try {
+      const signature = await wallet.sendTransaction(
+        transaction,
+        reliableConnection
+      );
 
-    console.log(
-      `SPL token transfer completed: ${token}, ${amount}, from: ${fromAddress.toString()}, to: ${toAddress.toString()}`
-    );
-    console.log(`Transaction signature: ${signature}`);
+      console.log(`${token} transaction sent with signature: ${signature}`);
 
-    return {
-      success: true,
-      transactionHash: signature,
-      amount,
-      fromAddress: fromAddress.toString(),
-      toAddress: toAddress.toString(),
-      chain: "solana",
-      token,
-    };
+      // Confirm transaction with reasonable timeout
+      await Promise.race([
+        reliableConnection.confirmTransaction({
+          signature,
+          blockhash: blockhashInfo.blockhash,
+          lastValidBlockHeight: blockhashInfo.lastValidBlockHeight,
+        }),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error("Transaction confirmation timeout")),
+            60000
+          )
+        ),
+      ]);
+
+      console.log(`${token} transfer completed successfully!`);
+
+      return {
+        success: true,
+        transactionHash: signature,
+        amount,
+        fromAddress: fromAddress.toString(),
+        toAddress: toAddress.toString(),
+        chain: "solana",
+        token,
+      };
+    } catch (txError) {
+      if (txError.message?.includes("User rejected")) {
+        throw new Error("Transaction was rejected in your wallet");
+      } else if (txError.message?.includes("insufficient funds")) {
+        throw new Error(
+          `Insufficient ${token} balance or SOL for transaction fees`
+        );
+      } else {
+        console.error("SPL token transfer error:", txError);
+        throw new Error(`${token} transfer failed: ${txError.message}`);
+      }
+    }
   } catch (error) {
     console.error(`SPL token transfer error:`, error);
     throw error;
@@ -768,15 +954,30 @@ export const transferSPLToken = async ({
 export const transferSolanaToken = async ({
   token,
   amount,
-  connection,
+  // connection,
   wallet,
 }) => {
+  // Input validation
+  if (!amount || parseFloat(amount) <= 0) {
+    throw new Error(`Invalid amount: ${amount}`);
+  }
+
+  if (!wallet) {
+    throw new Error("Solana wallet not provided");
+  }
+
+  if (!wallet.publicKey) {
+    throw new Error(
+      "Solana wallet not connected. Please connect your wallet first."
+    );
+  }
+
   // Determine if this is native SOL or an SPL token
   if (token === "SOL") {
-    return await transferSOL({ amount, connection, wallet });
+    return await transferSOL({ amount, wallet });
   } else {
     // SPL token transfer (USDT-SOL, USDC-SOL)
-    return await transferSPLToken({ token, amount, connection, wallet });
+    return await transferSPLToken({ token, amount, wallet });
   }
 };
 
@@ -809,7 +1010,11 @@ export const executeTransfer = async (params) => {
   try {
     // For Solana
     if (chain === "solana") {
-      return await transferSolanaToken(params);
+      return await transferSolanaToken({
+        token,
+        amount,
+        wallet: params.wallet,
+      });
     }
 
     // For EVM chains (Ethereum, BSC, XDC)

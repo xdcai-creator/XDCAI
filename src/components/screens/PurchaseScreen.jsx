@@ -70,8 +70,12 @@ const PurchaseScreen = () => {
 
   // Calculate bonus based on purchase amount
   const bonusAmount = useMemo(() => {
-    if (!ethAmount || !marketPrices[selectedCurrency]) return 0;
-    return calculateBonus(ethAmount, selectedCurrency);
+    const formattedCurrency = selectedCurrency.includes("-")
+      ? selectedCurrency.split("-")[0]
+      : selectedCurrency;
+
+    if (!ethAmount || !marketPrices[formattedCurrency]) return 0;
+    return calculateBonus(ethAmount, formattedCurrency);
   }, [ethAmount, selectedCurrency, marketPrices, calculateBonus]);
 
   //
@@ -360,8 +364,8 @@ const PurchaseScreen = () => {
             chain = "solana";
 
             // For Solana, we need to initialize the connection
-            const solanaRpcUrl = networkConfig.rpcEndpoints.solana.http;
-            solanaConnection = new Connection(solanaRpcUrl);
+            // const solanaRpcUrl = networkConfig.rpcEndpoints.solana.http;
+            // solanaConnection = new Connection(solanaRpcUrl);
 
             if (!solanaWallet || !solanaWallet.connected) {
               setError("Solana wallet not connected");
@@ -399,7 +403,7 @@ const PurchaseScreen = () => {
               chain,
               token: selectedCurrency,
               amount: ethAmount,
-              connection: solanaConnection,
+              // connection: solanaConnection,
               wallet: solanaWallet,
             });
           } else {
@@ -437,7 +441,10 @@ const PurchaseScreen = () => {
             usdValue,
             senderAddress: transferResult.fromAddress,
             sourceChain: transferResult.chain,
+            tokenType: selectedCurrency,
           };
+
+          console.log("txDetails ", txDetails);
 
           localStorage.setItem("xdcai_tx_details", JSON.stringify(txDetails));
 

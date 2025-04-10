@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 import useContributionSocket from "../../hooks/useContributionSocket";
 
@@ -61,16 +61,16 @@ const statusConfig = {
   Failed: {
     message:
       "We encountered an issue with your purchase. Please contact our support team for assistance.",
-    // icon: "❗",
-    // bgColor: "bg-accent-red/20",
+    icon: "❗",
+    bgColor: "bg-accent-red/20",
     borderColor: "border-accent-red",
     textColor: "text-accent-red",
   },
   "Bridge Failed": {
     message:
       "We're having trouble delivering your tokens to the XDC network. Our team has been notified and is working on it. Please contact support if this persists.",
-    // icon: "❗",
-    // bgColor: "bg-accent-red/20",
+    icon: "❗",
+    bgColor: "bg-accent-red/20",
     borderColor: "border-accent-red",
     textColor: "text-accent-red",
   },
@@ -100,20 +100,70 @@ function ContributionStatus({
   showToasts = true,
   onContributionFound,
 }) {
-  const { contribution, connected, loading } = useContributionSocket({
-    walletAddress,
-    txHash,
-    senderAddress,
-  });
+  const { contribution, connected, loading, refetch, meta } =
+    useContributionSocket({
+      walletAddress,
+      txHash,
+      senderAddress,
+    });
 
   // Track previous status for toast notifications
-  const prevStatusRef = React.useRef(null);
+  const prevStatusRef = useRef(null);
+  // Track toast notifications to prevent duplicates
+  const toastIdsRef = useRef({});
+  // Track shown contract registration notification
+  const contractRegShownRef = useRef(false);
 
   // Add state for estimated time
   const [estimatedTotal, setEstimatedTotal] = useState(null);
+  // Add state for tracking initial loading experience
+  const [initialLoadingTime, setInitialLoadingTime] = useState(0);
+  const [lastRefetchTime, setLastRefetchTime] = useState(Date.now());
+  const [waitingPhase, setWaitingPhase] = useState("initial"); // "initial" -> "waiting" -> "extended"
+  // Add debug state
+  const [debugVisible, setDebugVisible] = useState(false);
 
-  // Commented out time remaining implementation for future use
-  // const [timeRemaining, setTimeRemaining] = useState(null);
+  // Reset contract registration flag when component mounts or txHash changes
+  useEffect(() => {
+    contractRegShownRef.current = false;
+    toastIdsRef.current = {};
+    prevStatusRef.current = null;
+  }, [txHash]);
+
+  // Update waiting phases based on time elapsed
+  useEffect(() => {
+    if (contribution) return; // Skip if contribution is already found
+
+    const timer = setInterval(() => {
+      const currentTime = Date.now();
+      const secondsElapsed = Math.floor((currentTime - lastRefetchTime) / 1000);
+
+      // Increment loading time counter
+      setInitialLoadingTime((prev) => prev + 1);
+
+      // Auto-refetch on intervals
+      if (secondsElapsed >= 15) {
+        // Refetch every 15 seconds
+        refetch();
+        setLastRefetchTime(currentTime);
+      }
+
+      // Update waiting phase based on total time spent waiting
+      if (initialLoadingTime > 30 && waitingPhase === "initial") {
+        setWaitingPhase("waiting");
+      } else if (initialLoadingTime > 120 && waitingPhase === "waiting") {
+        setWaitingPhase("extended");
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [
+    contribution,
+    initialLoadingTime,
+    lastRefetchTime,
+    waitingPhase,
+    refetch,
+  ]);
 
   // Notify parent component when contribution is found
   useEffect(() => {
@@ -125,23 +175,13 @@ function ContributionStatus({
     if (contribution && contribution.estimatedTimeMinutes) {
       setEstimatedTotal(contribution.estimatedTimeMinutes);
     }
-
-    // Commented out time remaining calculation for future use
-    /*
-    if (contribution && contribution.estimatedTimeMinutes) {
-      const totalMinutes = contribution.estimatedTimeMinutes;
-      const elapsedMinutes = contribution.elapsedMinutes || 0;
-      const remaining = Math.max(0, totalMinutes - elapsedMinutes);
-      setTimeRemaining(remaining);
-    }
-    */
   }, [contribution, onContributionFound]);
 
   // Show toast notifications when status changes
   useEffect(() => {
     if (!contribution || !showToasts || !contribution.status) return;
 
-    // Only show toast if status has changed and is a valid status
+    // Only show toast if status has changed
     if (prevStatusRef.current !== contribution.status) {
       // Get appropriate message based on status
       const config = statusConfig[contribution.status] || {
@@ -149,39 +189,54 @@ function ContributionStatus({
         icon: "📝",
       };
 
+      // Clear any existing toast for this status type
+      if (toastIdsRef.current[contribution.status]) {
+        toast.dismiss(toastIdsRef.current[contribution.status]);
+      }
+
       // Show notification with appropriate style based on status
+      let toastId;
       if (["Claimable", "Claimed"].includes(contribution.status)) {
-        toast.success(`${config.icon} ${config.message}`, { autoClose: 10000 });
+        toastId = toast.success(`${config.icon} ${config.message}`, {
+          autoClose: 10000,
+          toastId: `status-${contribution.status}-${Date.now()}`, // Ensure uniqueness
+        });
       } else if (
         ["Failed", "Bridge Failed", "Swap Failed"].includes(contribution.status)
       ) {
-        toast.error(`${config.icon} ${config.message}`, { autoClose: false });
+        toastId = toast.error(`${config.message}`, {
+          autoClose: false,
+          toastId: `status-${contribution.status}-${Date.now()}`,
+        });
       } else {
-        toast.info(`${config.icon} ${config.message}`);
+        toastId = toast.info(`${config.icon} ${config.message}`, {
+          toastId: `status-${contribution.status}-${Date.now()}`,
+        });
       }
+
+      // Store the toast ID for later reference
+      toastIdsRef.current[contribution.status] = toastId;
 
       // Update previous status ref
       prevStatusRef.current = contribution.status;
     }
 
-    // Special notification for contract registration
+    // Separate notification for contract registration, only show once per component lifecycle
     if (
       contribution.contractRegistered &&
       contribution.contractTxHash &&
-      !prevStatusRef.current?.contractRegistered
+      !contractRegShownRef.current
     ) {
       toast.success(
         "🎉 Your tokens are ready! You can now claim your $XDCAI tokens.",
         {
           autoClose: 10000,
+          toastId: `contract-registered-${Date.now()}`,
         }
       );
 
-      // Update previous status ref to include contract registration
-      prevStatusRef.current = {
-        ...prevStatusRef.current,
-        contractRegistered: true,
-      };
+      // Mark contract registration as shown
+      contractRegShownRef.current = true;
     }
   }, [contribution, showToasts]);
 
@@ -191,33 +246,50 @@ function ContributionStatus({
     return `${minutes} minute${minutes !== 1 ? "s" : ""}`;
   };
 
-  // Don't render anything if loading or no contribution
-  if (loading) {
-    return (
-      <div className="mb-6 p-4 bg-dark-light border border-[#425152] rounded-lg text-center">
-        <div className="animate-spin w-8 h-8 border-3 border-primary border-t-transparent rounded-full mx-auto mb-3"></div>
-        <h3 className="text-white font-medium mb-2">
-          Checking your purchase status...
-        </h3>
-      </div>
-    );
-  }
-
+  // If still loading but we don't have a contribution yet, show a contextual waiting message
   if (!contribution) {
+    const waitingMessages = {
+      initial: {
+        title: "Processing your purchase...",
+        message:
+          "We're confirming your transaction. This may take a few minutes.",
+        width: "30%",
+      },
+      waiting: {
+        title: "Still processing your purchase...",
+        message:
+          "Your transaction is in our processing queue. This can take 5-10 minutes as we verify and prepare your tokens.",
+        width: "60%",
+      },
+      extended: {
+        title: "Transaction in processing queue",
+        message:
+          "Your transaction is in our processing queue. Because of high volume, it's taking longer than usual to process. Please be patient - it has not failed.",
+        width: "80%",
+      },
+    };
+
+    const currentPhase = waitingMessages[waitingPhase];
+
     return (
       <div className="mb-6 p-4 bg-dark-light border border-[#425152] rounded-lg text-center">
-        <h3 className="text-white font-medium mb-2">
-          Processing your purchase...
-        </h3>
-        <p className="text-sm text-gray-light">
-          We're confirming your transaction. This may take a few minutes.
-        </p>
+        <h3 className="text-white font-medium mb-2">{currentPhase.title}</h3>
+        <p className="text-sm text-gray-light mb-3">{currentPhase.message}</p>
         <div className="mt-3 w-full bg-dark-darker rounded-full h-1.5">
           <div
             className="bg-primary h-1.5 rounded-full animate-pulse"
-            style={{ width: "60%" }}
+            style={{ width: currentPhase.width }}
           ></div>
         </div>
+
+        {waitingPhase === "extended" && (
+          <button
+            onClick={refetch}
+            className="mt-4 px-4 py-2 bg-primary/20 border border-primary rounded-md text-primary text-sm hover:bg-primary/30 transition-colors"
+          >
+            Check Again
+          </button>
+        )}
       </div>
     );
   }
@@ -263,26 +335,8 @@ function ContributionStatus({
         </div>
       )}
 
-      {/* Commented out time remaining implementation for future use */}
-      {/*
-      {contribution.status === "Bridging" && timeRemaining && (
-        <div className="mt-2 text-center">
-          <p className="text-sm text-gray-light">
-            Time remaining: {formatTime(timeRemaining)}
-          </p>
-          <div className="mt-2 w-full bg-dark-darker rounded-full h-1.5">
-            <div
-              className="bg-primary h-1.5 rounded-full"
-              style={{
-                width: `${Math.min(100, ((estimatedTotal - timeRemaining) / estimatedTotal) * 100)}%`
-              }}
-            ></div>
-          </div>
-        </div>
-      )}
-      */}
-
-      {contribution.contractRegistered && (
+      {/* Only show the contract registered box if status is Claimable */}
+      {contribution.contractRegistered && contribution.status === "Claimable" && (
         <div className="bg-primary/10 p-3 rounded-lg mt-3">
           <p className="text-primary text-center text-sm">
             🎉 Your tokens are now ready to claim!
@@ -314,6 +368,42 @@ function ContributionStatus({
           Contact Support
         </button>
       )}
+
+      {/* Debug information (toggle visibility) */}
+      <div className="mt-4 text-xs text-gray-400">
+        <button
+          onClick={() => setDebugVisible(!debugVisible)}
+          className="text-xs underline"
+        >
+          {debugVisible ? "Hide Debug Info" : "Show Debug Info"}
+        </button>
+
+        {debugVisible && (
+          <div className="mt-1 p-2 bg-dark-darker rounded text-left">
+            <div>Status: {contribution.status || "None"}</div>
+            <div>
+              Contract Registered:{" "}
+              {contribution.contractRegistered ? "Yes" : "No"}
+            </div>
+            <div>Update Source: {contribution._updateSource || "Unknown"}</div>
+            <div>
+              Last Update:{" "}
+              {new Date(contribution.lastUpdated).toLocaleTimeString()}
+            </div>
+            <div>Bridge Task: {contribution.bridgeTaskId || "None"}</div>
+            <div>Source Chain: {contribution.sourceChain || "Unknown"}</div>
+            <div>Source Token: {contribution.sourceToken || "Unknown"}</div>
+            <div>
+              Transaction Hash: {contribution.sourceTxHash?.slice(0, 10)}...
+            </div>
+            {meta && (
+              <>
+                <div>Last Update Type: {meta.lastUpdateType || "Unknown"}</div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
