@@ -22,12 +22,17 @@ const ConnectXdcPopup = ({
   // Get XDC address when connected
   useEffect(() => {
     const getXdcAddress = async () => {
+      console.log("isXdcConnected ", isXdcConnected);
       if (isXdcConnected && window.ethereum) {
         try {
           const provider = new ethers.providers.Web3Provider(window.ethereum);
           const accounts = await provider.listAccounts();
           if (accounts && accounts.length > 0) {
-            setXdcAddress(accounts[0]);
+            const detectedAddress = accounts[0];
+            setXdcAddress(detectedAddress);
+            console.log("calling update claim");
+            // Automatically update claim address if already connected
+            await handleConfirmAddress(detectedAddress);
           }
         } catch (error) {
           console.error("Error getting XDC address:", error);

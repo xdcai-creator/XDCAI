@@ -160,8 +160,15 @@ const PurchaseScreen = () => {
           ? "solana"
           : "xdc";
 
+      // For Solana, use the Solana wallet address if available
+      let walletToUse = address;
+      if (currentChain === "solana" && solanaWallet && solanaWallet.publicKey) {
+        walletToUse = solanaWallet.publicKey.toString();
+        console.log("Using Solana wallet address for intent:", walletToUse);
+      }
+
       const result = await registerTransactionIntent({
-        walletAddress: address,
+        walletAddress: walletToUse,
         expectedAmount: ethAmount,
         paymentCurrency: baseCurrency, // Send USDT instead of USDT-BNB
         expectedChain: currentChain,
@@ -196,6 +203,24 @@ const PurchaseScreen = () => {
     }
   };
 
+  // Add this function and call it at the beginning of handlePurchase
+  const resetTransactionState = () => {
+    // Clear ALL localStorage related to transactions
+    localStorage.removeItem("xdcai_contribution_id");
+    localStorage.removeItem("xdcai_tx_details");
+    localStorage.removeItem("xdcai_seen_thank_you");
+
+    // Dismiss any existing toast notifications
+    toast.dismiss();
+
+    // Reset state variables
+    setIntentId(null);
+    setIntentExpiry(null);
+    setIntentTimeRemaining(null);
+    setToastId(null);
+    setError(null);
+  };
+
   // Handle purchase transaction
   const handlePurchase = async () => {
     try {
@@ -215,6 +240,8 @@ const PurchaseScreen = () => {
         showError(errorMsg);
         return;
       }
+
+      resetTransactionState();
 
       // Special handling for Solana wallet connection
       if (
@@ -327,7 +354,7 @@ const PurchaseScreen = () => {
             localStorage.setItem("xdcai_tx_details", JSON.stringify(txDetails));
 
             // Navigate to thank you page
-            navigate("/thank-you");
+            navigateToThankYou();
           } else {
             throw new Error("Transaction failed");
           }
@@ -425,8 +452,12 @@ const PurchaseScreen = () => {
           setProcessingStep("Transaction complete!");
 
           // Store transaction details for thank you page
+          const formattedCurrency = selectedCurrency.includes("-")
+            ? selectedCurrency.split("-")[0]
+            : selectedCurrency;
           const usdValue =
-            parseFloat(ethAmount) * marketPrices[selectedCurrency];
+            parseFloat(ethAmount) * marketPrices[formattedCurrency];
+          //
           const txDetails = {
             amount: ethAmount,
             currency: selectedCurrency,
@@ -449,7 +480,7 @@ const PurchaseScreen = () => {
           localStorage.setItem("xdcai_tx_details", JSON.stringify(txDetails));
 
           // Navigate to thank you page
-          navigate("/thank-you");
+          navigateToThankYou();
         } catch (transferError) {
           console.error("Transfer error:", transferError);
           handleTransactionError(transferError);
@@ -463,6 +494,14 @@ const PurchaseScreen = () => {
       setIsSwitchingNetwork(false);
       setProcessingStep("");
     }
+  };
+
+  const navigateToThankYou = () => {
+    // Clear any toast notifications from previous transactions
+    toast.dismiss();
+
+    // Navigate with a unique key to ensure complete component remount
+    navigate("/thank-you", { state: { txTimestamp: Date.now() } });
   };
 
   // Helper function to handle transaction errors

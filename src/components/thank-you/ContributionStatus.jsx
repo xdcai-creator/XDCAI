@@ -107,6 +107,9 @@ function ContributionStatus({
       senderAddress,
     });
 
+  console.log("txHash in Cintrib status ", txHash);
+  console.log("tcontribution ", contribution);
+
   // Track previous status for toast notifications
   const prevStatusRef = useRef(null);
   // Track toast notifications to prevent duplicates
@@ -164,6 +167,26 @@ function ContributionStatus({
     waitingPhase,
     refetch,
   ]);
+
+  useEffect(() => {
+    // Clear all transaction-related toast notifications when the component mounts
+    // or when txHash changes
+    toast.dismiss();
+
+    // Reset all refs and state
+    contractRegShownRef.current = false;
+    toastIdsRef.current = {};
+    prevStatusRef.current = null;
+    setEstimatedTotal(null);
+    setInitialLoadingTime(0);
+    setLastRefetchTime(Date.now());
+    setWaitingPhase("initial");
+
+    return () => {
+      // Also clear toasts when the component unmounts
+      toast.dismiss();
+    };
+  }, [txHash]);
 
   // Notify parent component when contribution is found
   useEffect(() => {

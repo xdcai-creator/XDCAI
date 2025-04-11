@@ -563,6 +563,19 @@ function useContributionSocket({
       socket.off("bridge-update", handleBridgeUpdate);
       socket.disconnect();
 
+      // Reset state
+      setContribution(null);
+      contributionMetaRef.current = {
+        sourceTxHash: null,
+        lastUpdateType: null,
+        createdAt: null,
+      };
+
+      // Clear any active toast notifications related to transactions
+      if (typeof toast !== "undefined" && toast.dismiss) {
+        toast.dismiss();
+      }
+
       // Clear polling interval
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);

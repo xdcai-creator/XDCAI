@@ -116,6 +116,7 @@ const ContributionsDashboard = () => {
     limit: 10,
     skip: 0,
   });
+  const [showVerified, setShowVerified] = useState(true);
 
   // Status filter options
   const statusOptions = [
@@ -202,6 +203,7 @@ const ContributionsDashboard = () => {
         search: searchQuery || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
+        intentVerified: showVerified ? true : false, //
       };
 
       const response = await adminApi.getContributions(filterOptions);
@@ -647,7 +649,24 @@ const ContributionsDashboard = () => {
               />
             </div>
           </div>
-
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Filter Status
+            </label>
+            <div className="flex items-center">
+              <label className="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  className="form-checkbox h-5 w-5 text-[#00FA73] rounded bg-[#1A1A1A] border-[#303030]"
+                  checked={showVerified}
+                  onChange={() => setShowVerified(!showVerified)}
+                />
+                <span className="ml-2 text-gray-200">
+                  Show verified contributions only
+                </span>
+              </label>
+            </div>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-1">
               Search

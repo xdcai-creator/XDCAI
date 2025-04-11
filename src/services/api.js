@@ -150,6 +150,9 @@ export const adminApi = {
     if (options.walletAddress)
       params.append("walletAddress", options.walletAddress?.toLowerCase());
 
+    if (options.intentVerified)
+      params.append("intentVerified", options.intentVerified?.toString());
+
     // Add pagination
     if (options.limit) params.append("limit", options.limit.toString());
     if (options.skip !== undefined)

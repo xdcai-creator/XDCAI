@@ -45,6 +45,8 @@ const ThankYouScreen = () => {
   const [showThankYouPopup, setShowThankYouPopup] = useState(false);
   const [showConnectXdcPopup, setShowConnectXdcPopup] = useState(false);
 
+  const [hasUpdatedXdcAddress, setHasUpdatedXdcAddress] = useState(false);
+
   // Add this effect to handle the persistence of the thank you page state
   useEffect(() => {
     // Check if user has completed the transaction but not yet claimed tokens
@@ -61,6 +63,7 @@ const ThankYouScreen = () => {
       if (!txDetails) {
         // If there are no transaction details at all, redirect to purchase
         navigate("/purchase");
+        localStorage.removeItem("xdcai_contribution_id");
         return;
       }
 
@@ -154,6 +157,47 @@ const ThankYouScreen = () => {
     }
   }, [navigate, address]);
 
+  useEffect(() => {
+    const updateXdcAddress = async () => {
+      // Only update if:
+      // 1. XDC is connected
+      // 2. We have a contribution ID
+      // 3. Address hasn't been updated before
+      // 4. We have an address
+      if (
+        isXdcConnected &&
+        contributionId &&
+        !hasUpdatedXdcAddress &&
+        address
+      ) {
+        try {
+          const provider = new ethers.providers.Web3Provider(window.ethereum);
+          const accounts = await provider.listAccounts();
+
+          if (accounts && accounts.length > 0) {
+            const detectedAddress = accounts[0];
+
+            // Update claim address via API
+            await contributionsApi.updateClaimAddress(
+              contributionId,
+              detectedAddress
+            );
+
+            // Mark address as updated
+            setHasUpdatedXdcAddress(true);
+
+            toast.success("XDC address confirmed for claiming!");
+          }
+        } catch (error) {
+          console.error("Error updating XDC address:", error);
+          toast.error("Failed to confirm XDC address");
+        }
+      }
+    };
+
+    updateXdcAddress();
+  }, [isXdcConnected, contributionId, hasUpdatedXdcAddress, address]);
+
   // Handle successful claim cleanup
   const handleSuccessfulClaim = () => {
     // Only clear these after successful claim
@@ -238,12 +282,15 @@ const ThankYouScreen = () => {
 
   // Update contribution ID when found via websocket
   const handleContributionFound = (contribution) => {
-    if (contribution && contribution._id) {
+    if (contribution && (contribution._id || contribution.id)) {
       setFoundContribution(contribution);
-      setContributionId(contribution._id);
+      setContributionId(contribution._id || contribution.id);
 
       // Store contribution ID in localStorage for persistence
-      localStorage.setItem("xdcai_contribution_id", contribution._id);
+      localStorage.setItem(
+        "xdcai_contribution_id",
+        contribution._id ? contribution._id : contribution.id
+      );
 
       // Show the connect XDC popup if contribution is found and we're not connected to XDC
       if (!isXdcConnected) {
